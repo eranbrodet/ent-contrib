@@ -171,6 +171,7 @@ type ComplexityRoot struct {
 		Parent     func(childComplexity int) int
 		Priority   func(childComplexity int) int
 		Scores     func(childComplexity int) int
+		ScoresTodo func(childComplexity int) int
 		Status     func(childComplexity int) int
 		Text       func(childComplexity int) int
 	}
@@ -768,6 +769,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Todo.Scores(childComplexity), true
+
+	case "Todo.scoresTodo":
+		if e.complexity.Todo.ScoresTodo == nil {
+			break
+		}
+
+		return e.complexity.Todo.ScoresTodo(childComplexity), true
 
 	case "Todo.status":
 		if e.complexity.Todo.Status == nil {
@@ -1586,6 +1594,7 @@ type Todo implements Node {
   init: Map
   custom: [Custom!]
   customp: [Custom]
+  scoresTodo: ID
   parent: Todo
   children(
     """Returns the elements in the list that come after the specified cursor."""
@@ -1638,6 +1647,7 @@ enum TodoOrderField {
   STATUS
   PRIORITY_ORDER
   TEXT
+  V1_SCORE
 }
 """TodoStatus is enum for the field status"""
 enum TodoStatus @goModel(model: "entgo.io/contrib/entgql/internal/todo/ent/todo.Status") {
@@ -1705,6 +1715,13 @@ input TodoWhereInput {
   categoryIDNotIn: [ID!]
   categoryIDIsNil: Boolean
   categoryIDNotNil: Boolean
+  """scores_todo field predicates"""
+  scoresTodo: ID
+  scoresTodoNEQ: ID
+  scoresTodoIn: [ID!]
+  scoresTodoNotIn: [ID!]
+  scoresTodoIsNil: Boolean
+  scoresTodoNotNil: Boolean
   """parent edge predicates"""
   hasParent: Boolean
   hasParentWith: [TodoWhereInput!]
@@ -4248,6 +4265,8 @@ func (ec *executionContext) fieldContext_Mutation_createTodo(ctx context.Context
 				return ec.fieldContext_Todo_custom(ctx, field)
 			case "customp":
 				return ec.fieldContext_Todo_customp(ctx, field)
+			case "scoresTodo":
+				return ec.fieldContext_Todo_scoresTodo(ctx, field)
 			case "parent":
 				return ec.fieldContext_Todo_parent(ctx, field)
 			case "children":
@@ -4335,6 +4354,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTodo(ctx context.Context
 				return ec.fieldContext_Todo_custom(ctx, field)
 			case "customp":
 				return ec.fieldContext_Todo_customp(ctx, field)
+			case "scoresTodo":
+				return ec.fieldContext_Todo_scoresTodo(ctx, field)
 			case "parent":
 				return ec.fieldContext_Todo_parent(ctx, field)
 			case "children":
@@ -5200,6 +5221,8 @@ func (ec *executionContext) fieldContext_Scores_todo(ctx context.Context, field 
 				return ec.fieldContext_Todo_custom(ctx, field)
 			case "customp":
 				return ec.fieldContext_Todo_customp(ctx, field)
+			case "scoresTodo":
+				return ec.fieldContext_Todo_scoresTodo(ctx, field)
 			case "parent":
 				return ec.fieldContext_Todo_parent(ctx, field)
 			case "children":
@@ -5959,6 +5982,47 @@ func (ec *executionContext) fieldContext_Todo_customp(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Todo_scoresTodo(ctx context.Context, field graphql.CollectedField, obj *ent.Todo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Todo_scoresTodo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ScoresTodo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOID2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Todo_scoresTodo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Todo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Todo_parent(ctx context.Context, field graphql.CollectedField, obj *ent.Todo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Todo_parent(ctx, field)
 	if err != nil {
@@ -6017,6 +6081,8 @@ func (ec *executionContext) fieldContext_Todo_parent(ctx context.Context, field 
 				return ec.fieldContext_Todo_custom(ctx, field)
 			case "customp":
 				return ec.fieldContext_Todo_customp(ctx, field)
+			case "scoresTodo":
+				return ec.fieldContext_Todo_scoresTodo(ctx, field)
 			case "parent":
 				return ec.fieldContext_Todo_parent(ctx, field)
 			case "children":
@@ -6408,6 +6474,8 @@ func (ec *executionContext) fieldContext_TodoEdge_node(ctx context.Context, fiel
 				return ec.fieldContext_Todo_custom(ctx, field)
 			case "customp":
 				return ec.fieldContext_Todo_customp(ctx, field)
+			case "scoresTodo":
+				return ec.fieldContext_Todo_scoresTodo(ctx, field)
 			case "parent":
 				return ec.fieldContext_Todo_parent(ctx, field)
 			case "children":
@@ -11276,6 +11344,54 @@ func (ec *executionContext) unmarshalInputTodoWhereInput(ctx context.Context, ob
 			if err != nil {
 				return it, err
 			}
+		case "scoresTodo":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodo"))
+			it.ScoresTodo, err = ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scoresTodoNEQ":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodoNEQ"))
+			it.ScoresTodoNEQ, err = ec.unmarshalOID2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scoresTodoIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodoIn"))
+			it.ScoresTodoIn, err = ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scoresTodoNotIn":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodoNotIn"))
+			it.ScoresTodoNotIn, err = ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scoresTodoIsNil":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodoIsNil"))
+			it.ScoresTodoIsNil, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scoresTodoNotNil":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scoresTodoNotNil"))
+			it.ScoresTodoNotNil, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "hasParent":
 			var err error
 
@@ -13079,6 +13195,10 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 		case "customp":
 
 			out.Values[i] = ec._Todo_customp(ctx, field, obj)
+
+		case "scoresTodo":
+
+			out.Values[i] = ec._Todo_scoresTodo(ctx, field, obj)
 
 		case "parent":
 			field := field

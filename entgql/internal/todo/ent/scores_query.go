@@ -523,7 +523,7 @@ func (sq *ScoresQuery) loadTodo(ctx context.Context, query *TodoQuery, nodes []*
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.scores_todo
+		fk := n.ScoresTodo
 		if fk == nil {
 			return fmt.Errorf(`foreign-key "scores_todo" is nil for node %v`, n.ID)
 		}

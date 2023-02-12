@@ -1655,6 +1655,14 @@ type TodoWhereInput struct {
 	CategoryIDIsNil  bool  `json:"categoryIDIsNil,omitempty"`
 	CategoryIDNotNil bool  `json:"categoryIDNotNil,omitempty"`
 
+	// "scores_todo" field predicates.
+	ScoresTodo       *int  `json:"scoresTodo,omitempty"`
+	ScoresTodoNEQ    *int  `json:"scoresTodoNEQ,omitempty"`
+	ScoresTodoIn     []int `json:"scoresTodoIn,omitempty"`
+	ScoresTodoNotIn  []int `json:"scoresTodoNotIn,omitempty"`
+	ScoresTodoIsNil  bool  `json:"scoresTodoIsNil,omitempty"`
+	ScoresTodoNotNil bool  `json:"scoresTodoNotNil,omitempty"`
+
 	// "parent" edge predicates.
 	HasParent     *bool             `json:"hasParent,omitempty"`
 	HasParentWith []*TodoWhereInput `json:"hasParentWith,omitempty"`
@@ -1883,6 +1891,24 @@ func (i *TodoWhereInput) P() (predicate.Todo, error) {
 	}
 	if i.CategoryIDNotNil {
 		predicates = append(predicates, todo.CategoryIDNotNil())
+	}
+	if i.ScoresTodo != nil {
+		predicates = append(predicates, todo.ScoresTodoEQ(*i.ScoresTodo))
+	}
+	if i.ScoresTodoNEQ != nil {
+		predicates = append(predicates, todo.ScoresTodoNEQ(*i.ScoresTodoNEQ))
+	}
+	if len(i.ScoresTodoIn) > 0 {
+		predicates = append(predicates, todo.ScoresTodoIn(i.ScoresTodoIn...))
+	}
+	if len(i.ScoresTodoNotIn) > 0 {
+		predicates = append(predicates, todo.ScoresTodoNotIn(i.ScoresTodoNotIn...))
+	}
+	if i.ScoresTodoIsNil {
+		predicates = append(predicates, todo.ScoresTodoIsNil())
+	}
+	if i.ScoresTodoNotNil {
+		predicates = append(predicates, todo.ScoresTodoNotNil())
 	}
 
 	if i.HasParent != nil {

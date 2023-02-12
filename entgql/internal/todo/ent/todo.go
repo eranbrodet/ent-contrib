@@ -53,10 +53,11 @@ type Todo struct {
 	Custom []customstruct.Custom `json:"custom,omitempty"`
 	// Customp holds the value of the "customp" field.
 	Customp []*customstruct.Custom `json:"customp,omitempty"`
+	// ScoresTodo holds the value of the "scores_todo" field.
+	ScoresTodo *int `json:"scores_todo,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TodoQuery when eager-loading is set.
 	Edges         TodoEdges `json:"edges"`
-	scores_todo   *int
 	todo_children *int
 	todo_secret   *int
 }
@@ -150,17 +151,15 @@ func (*Todo) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case todo.FieldBlob, todo.FieldInit, todo.FieldCustom, todo.FieldCustomp:
 			values[i] = new([]byte)
-		case todo.FieldID, todo.FieldPriority, todo.FieldCategoryID:
+		case todo.FieldID, todo.FieldPriority, todo.FieldCategoryID, todo.FieldScoresTodo:
 			values[i] = new(sql.NullInt64)
 		case todo.FieldStatus, todo.FieldText:
 			values[i] = new(sql.NullString)
 		case todo.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case todo.ForeignKeys[0]: // scores_todo
+		case todo.ForeignKeys[0]: // todo_children
 			values[i] = new(sql.NullInt64)
-		case todo.ForeignKeys[1]: // todo_children
-			values[i] = new(sql.NullInt64)
-		case todo.ForeignKeys[2]: // todo_secret
+		case todo.ForeignKeys[1]: // todo_secret
 			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Todo", columns[i])
@@ -243,21 +242,21 @@ func (t *Todo) assignValues(columns []string, values []any) error {
 					return fmt.Errorf("unmarshal field customp: %w", err)
 				}
 			}
-		case todo.ForeignKeys[0]:
+		case todo.FieldScoresTodo:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field scores_todo", value)
+				return fmt.Errorf("unexpected type %T for field scores_todo", values[i])
 			} else if value.Valid {
-				t.scores_todo = new(int)
-				*t.scores_todo = int(value.Int64)
+				t.ScoresTodo = new(int)
+				*t.ScoresTodo = int(value.Int64)
 			}
-		case todo.ForeignKeys[1]:
+		case todo.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field todo_children", value)
 			} else if value.Valid {
 				t.todo_children = new(int)
 				*t.todo_children = int(value.Int64)
 			}
-		case todo.ForeignKeys[2]:
+		case todo.ForeignKeys[1]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field todo_secret", value)
 			} else if value.Valid {
@@ -343,6 +342,11 @@ func (t *Todo) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("customp=")
 	builder.WriteString(fmt.Sprintf("%v", t.Customp))
+	builder.WriteString(", ")
+	if v := t.ScoresTodo; v != nil {
+		builder.WriteString("scores_todo=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -2175,6 +2175,16 @@ var (
 			}
 		},
 	}
+	// TodoOrderFieldScoresTodo orders Todo by scores_todo.
+	TodoOrderFieldScoresTodo = &TodoOrderField{
+		field: todo.FieldScoresTodo,
+		toCursor: func(t *Todo) Cursor {
+			return Cursor{
+				ID:    t.ID,
+				Value: t.ScoresTodo,
+			}
+		},
+	}
 )
 
 // String implement fmt.Stringer interface.
@@ -2189,6 +2199,8 @@ func (f TodoOrderField) String() string {
 		str = "PRIORITY_ORDER"
 	case todo.FieldText:
 		str = "TEXT"
+	case todo.FieldScoresTodo:
+		str = "V1_SCORE"
 	}
 	return str
 }
@@ -2213,6 +2225,8 @@ func (f *TodoOrderField) UnmarshalGQL(v interface{}) error {
 		*f = *TodoOrderFieldPriority
 	case "TEXT":
 		*f = *TodoOrderFieldText
+	case "V1_SCORE":
+		*f = *TodoOrderFieldScoresTodo
 	default:
 		return fmt.Errorf("%s is not a valid TodoOrderField", str)
 	}

@@ -550,6 +550,7 @@ type Todo implements Node {
   init: Map
   custom: [Custom!]
   customp: [Custom]
+  scoresTodo: ID
   parent: Todo
   children(
     """Returns the elements in the list that come after the specified cursor."""
@@ -602,6 +603,7 @@ enum TodoOrderField {
   STATUS
   PRIORITY_ORDER
   TEXT
+  V1_SCORE
 }
 """TodoStatus is enum for the field status"""
 enum TodoStatus @goModel(model: "entgo.io/contrib/entgql/internal/todo/ent/todo.Status") {
@@ -669,6 +671,13 @@ input TodoWhereInput {
   categoryIDNotIn: [ID!]
   categoryIDIsNil: Boolean
   categoryIDNotNil: Boolean
+  """scores_todo field predicates"""
+  scoresTodo: ID
+  scoresTodoNEQ: ID
+  scoresTodoIn: [ID!]
+  scoresTodoNotIn: [ID!]
+  scoresTodoIsNil: Boolean
+  scoresTodoNotNil: Boolean
   """parent edge predicates"""
   hasParent: Boolean
   hasParentWith: [TodoWhereInput!]

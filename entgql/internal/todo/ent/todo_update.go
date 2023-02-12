@@ -138,6 +138,26 @@ func (tu *TodoUpdate) ClearCustomp() *TodoUpdate {
 	return tu
 }
 
+// SetScoresTodo sets the "scores_todo" field.
+func (tu *TodoUpdate) SetScoresTodo(i int) *TodoUpdate {
+	tu.mutation.SetScoresTodo(i)
+	return tu
+}
+
+// SetNillableScoresTodo sets the "scores_todo" field if the given value is not nil.
+func (tu *TodoUpdate) SetNillableScoresTodo(i *int) *TodoUpdate {
+	if i != nil {
+		tu.SetScoresTodo(*i)
+	}
+	return tu
+}
+
+// ClearScoresTodo clears the value of the "scores_todo" field.
+func (tu *TodoUpdate) ClearScoresTodo() *TodoUpdate {
+	tu.mutation.ClearScoresTodo()
+	return tu
+}
+
 // SetParentID sets the "parent" edge to the Todo entity by ID.
 func (tu *TodoUpdate) SetParentID(id int) *TodoUpdate {
 	tu.mutation.SetParentID(id)
@@ -632,6 +652,26 @@ func (tuo *TodoUpdateOne) AppendCustomp(c []*customstruct.Custom) *TodoUpdateOne
 // ClearCustomp clears the value of the "customp" field.
 func (tuo *TodoUpdateOne) ClearCustomp() *TodoUpdateOne {
 	tuo.mutation.ClearCustomp()
+	return tuo
+}
+
+// SetScoresTodo sets the "scores_todo" field.
+func (tuo *TodoUpdateOne) SetScoresTodo(i int) *TodoUpdateOne {
+	tuo.mutation.SetScoresTodo(i)
+	return tuo
+}
+
+// SetNillableScoresTodo sets the "scores_todo" field if the given value is not nil.
+func (tuo *TodoUpdateOne) SetNillableScoresTodo(i *int) *TodoUpdateOne {
+	if i != nil {
+		tuo.SetScoresTodo(*i)
+	}
+	return tuo
+}
+
+// ClearScoresTodo clears the value of the "scores_todo" field.
+func (tuo *TodoUpdateOne) ClearScoresTodo() *TodoUpdateOne {
+	tuo.mutation.ClearScoresTodo()
 	return tuo
 }
 

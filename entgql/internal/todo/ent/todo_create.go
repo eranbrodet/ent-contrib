@@ -116,6 +116,20 @@ func (tc *TodoCreate) SetCustomp(c []*customstruct.Custom) *TodoCreate {
 	return tc
 }
 
+// SetScoresTodo sets the "scores_todo" field.
+func (tc *TodoCreate) SetScoresTodo(i int) *TodoCreate {
+	tc.mutation.SetScoresTodo(i)
+	return tc
+}
+
+// SetNillableScoresTodo sets the "scores_todo" field if the given value is not nil.
+func (tc *TodoCreate) SetNillableScoresTodo(i *int) *TodoCreate {
+	if i != nil {
+		tc.SetScoresTodo(*i)
+	}
+	return tc
+}
+
 // SetParentID sets the "parent" edge to the Todo entity by ID.
 func (tc *TodoCreate) SetParentID(id int) *TodoCreate {
 	tc.mutation.SetParentID(id)
@@ -422,7 +436,7 @@ func (tc *TodoCreate) createSpec() (*Todo, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.scores_todo = &nodes[0]
+		_node.ScoresTodo = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

@@ -44,7 +44,7 @@ func (r *queryResolver) Groups(ctx context.Context, after *ent.Cursor, first *in
 
 func (r *queryResolver) Todos(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, orderBy *ent.TodoOrder, where *ent.TodoWhereInput) (*ent.TodoConnection, error) {
 	return r.client.Todo.Query().
-		Paginate(ctx, after, first, before, last,
+		PaginateExt(ctx, after, first, before, last,
 			ent.WithTodoOrder(orderBy),
 			ent.WithTodoFilter(where.Filter),
 		)

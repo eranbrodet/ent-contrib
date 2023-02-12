@@ -46,6 +46,8 @@ const (
 	FieldCustom = "custom"
 	// FieldCustomp holds the string denoting the customp field in the database.
 	FieldCustomp = "customp"
+	// FieldScoresTodo holds the string denoting the scores_todo field in the database.
+	FieldScoresTodo = "scores_todo"
 	// EdgeParent holds the string denoting the parent edge name in mutations.
 	EdgeParent = "parent"
 	// EdgeChildren holds the string denoting the children edge name in mutations.
@@ -101,12 +103,12 @@ var Columns = []string{
 	FieldInit,
 	FieldCustom,
 	FieldCustomp,
+	FieldScoresTodo,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "todos"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
-	"scores_todo",
 	"todo_children",
 	"todo_secret",
 }

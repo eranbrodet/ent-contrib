@@ -85,6 +85,11 @@ func (Todo) Fields() []ent.Field {
 				entgql.Skip(entgql.SkipMutationUpdateInput),
 			).
 			Optional(),
+
+		// Our edge column allows us to set one annotation for the sorting Todo
+		// items by their V1 scores, but we don't have another field to add annotation
+		//	for adding annotation that would be for V2 scores sorting
+		field.Int("scores_todo").Optional().Nillable().Annotations(entgql.OrderField("V1_SCORE")),
 	}
 }
 
@@ -107,7 +112,7 @@ func (Todo) Edges() []ent.Edge {
 			Unique(),
 		edge.From("scores", Scores.Type).
 			Ref("todo").
-			Unique(),
+			Unique().Field("scores_todo"),
 	}
 }
 

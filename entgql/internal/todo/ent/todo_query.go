@@ -738,10 +738,10 @@ func (tq *TodoQuery) loadScores(ctx context.Context, query *ScoresQuery, nodes [
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Todo)
 	for i := range nodes {
-		if nodes[i].scores_todo == nil {
+		if nodes[i].ScoresTodo == nil {
 			continue
 		}
-		fk := *nodes[i].scores_todo
+		fk := *nodes[i].ScoresTodo
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}

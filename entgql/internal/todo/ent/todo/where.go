@@ -94,6 +94,11 @@ func CategoryID(v int) predicate.Todo {
 	return predicate.Todo(sql.FieldEQ(FieldCategoryID, v))
 }
 
+// ScoresTodo applies equality check predicate on the "scores_todo" field. It's identical to ScoresTodoEQ.
+func ScoresTodo(v int) predicate.Todo {
+	return predicate.Todo(sql.FieldEQ(FieldScoresTodo, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Todo {
 	return predicate.Todo(sql.FieldEQ(FieldCreatedAt, v))
@@ -367,6 +372,36 @@ func CustompIsNil() predicate.Todo {
 // CustompNotNil applies the NotNil predicate on the "customp" field.
 func CustompNotNil() predicate.Todo {
 	return predicate.Todo(sql.FieldNotNull(FieldCustomp))
+}
+
+// ScoresTodoEQ applies the EQ predicate on the "scores_todo" field.
+func ScoresTodoEQ(v int) predicate.Todo {
+	return predicate.Todo(sql.FieldEQ(FieldScoresTodo, v))
+}
+
+// ScoresTodoNEQ applies the NEQ predicate on the "scores_todo" field.
+func ScoresTodoNEQ(v int) predicate.Todo {
+	return predicate.Todo(sql.FieldNEQ(FieldScoresTodo, v))
+}
+
+// ScoresTodoIn applies the In predicate on the "scores_todo" field.
+func ScoresTodoIn(vs ...int) predicate.Todo {
+	return predicate.Todo(sql.FieldIn(FieldScoresTodo, vs...))
+}
+
+// ScoresTodoNotIn applies the NotIn predicate on the "scores_todo" field.
+func ScoresTodoNotIn(vs ...int) predicate.Todo {
+	return predicate.Todo(sql.FieldNotIn(FieldScoresTodo, vs...))
+}
+
+// ScoresTodoIsNil applies the IsNil predicate on the "scores_todo" field.
+func ScoresTodoIsNil() predicate.Todo {
+	return predicate.Todo(sql.FieldIsNull(FieldScoresTodo))
+}
+
+// ScoresTodoNotNil applies the NotNil predicate on the "scores_todo" field.
+func ScoresTodoNotNil() predicate.Todo {
+	return predicate.Todo(sql.FieldNotNull(FieldScoresTodo))
 }
 
 // HasParent applies the HasEdge predicate on the "parent" edge.

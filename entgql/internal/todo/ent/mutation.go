@@ -4301,6 +4301,55 @@ func (m *TodoMutation) ResetCustomp() {
 	delete(m.clearedFields, todo.FieldCustomp)
 }
 
+// SetScoresTodo sets the "scores_todo" field.
+func (m *TodoMutation) SetScoresTodo(i int) {
+	m.scores = &i
+}
+
+// ScoresTodo returns the value of the "scores_todo" field in the mutation.
+func (m *TodoMutation) ScoresTodo() (r int, exists bool) {
+	v := m.scores
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScoresTodo returns the old "scores_todo" field's value of the Todo entity.
+// If the Todo object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TodoMutation) OldScoresTodo(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScoresTodo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScoresTodo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScoresTodo: %w", err)
+	}
+	return oldValue.ScoresTodo, nil
+}
+
+// ClearScoresTodo clears the value of the "scores_todo" field.
+func (m *TodoMutation) ClearScoresTodo() {
+	m.scores = nil
+	m.clearedFields[todo.FieldScoresTodo] = struct{}{}
+}
+
+// ScoresTodoCleared returns if the "scores_todo" field was cleared in this mutation.
+func (m *TodoMutation) ScoresTodoCleared() bool {
+	_, ok := m.clearedFields[todo.FieldScoresTodo]
+	return ok
+}
+
+// ResetScoresTodo resets all changes to the "scores_todo" field.
+func (m *TodoMutation) ResetScoresTodo() {
+	m.scores = nil
+	delete(m.clearedFields, todo.FieldScoresTodo)
+}
+
 // SetParentID sets the "parent" edge to the Todo entity by id.
 func (m *TodoMutation) SetParentID(id int) {
 	m.parent = &id
@@ -4471,7 +4520,7 @@ func (m *TodoMutation) ClearScores() {
 
 // ScoresCleared reports if the "scores" edge to the Scores entity was cleared.
 func (m *TodoMutation) ScoresCleared() bool {
-	return m.clearedscores
+	return m.ScoresTodoCleared() || m.clearedscores
 }
 
 // ScoresID returns the "scores" edge ID in the mutation.
@@ -4532,7 +4581,7 @@ func (m *TodoMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TodoMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
 		fields = append(fields, todo.FieldCreatedAt)
 	}
@@ -4560,6 +4609,9 @@ func (m *TodoMutation) Fields() []string {
 	if m.customp != nil {
 		fields = append(fields, todo.FieldCustomp)
 	}
+	if m.scores != nil {
+		fields = append(fields, todo.FieldScoresTodo)
+	}
 	return fields
 }
 
@@ -4586,6 +4638,8 @@ func (m *TodoMutation) Field(name string) (ent.Value, bool) {
 		return m.Custom()
 	case todo.FieldCustomp:
 		return m.Customp()
+	case todo.FieldScoresTodo:
+		return m.ScoresTodo()
 	}
 	return nil, false
 }
@@ -4613,6 +4667,8 @@ func (m *TodoMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCustom(ctx)
 	case todo.FieldCustomp:
 		return m.OldCustomp(ctx)
+	case todo.FieldScoresTodo:
+		return m.OldScoresTodo(ctx)
 	}
 	return nil, fmt.Errorf("unknown Todo field %s", name)
 }
@@ -4685,6 +4741,13 @@ func (m *TodoMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCustomp(v)
 		return nil
+	case todo.FieldScoresTodo:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScoresTodo(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Todo field %s", name)
 }
@@ -4745,6 +4808,9 @@ func (m *TodoMutation) ClearedFields() []string {
 	if m.FieldCleared(todo.FieldCustomp) {
 		fields = append(fields, todo.FieldCustomp)
 	}
+	if m.FieldCleared(todo.FieldScoresTodo) {
+		fields = append(fields, todo.FieldScoresTodo)
+	}
 	return fields
 }
 
@@ -4773,6 +4839,9 @@ func (m *TodoMutation) ClearField(name string) error {
 		return nil
 	case todo.FieldCustomp:
 		m.ClearCustomp()
+		return nil
+	case todo.FieldScoresTodo:
+		m.ClearScoresTodo()
 		return nil
 	}
 	return fmt.Errorf("unknown Todo nullable field %s", name)
@@ -4808,6 +4877,9 @@ func (m *TodoMutation) ResetField(name string) error {
 		return nil
 	case todo.FieldCustomp:
 		m.ResetCustomp()
+		return nil
+	case todo.FieldScoresTodo:
+		m.ResetScoresTodo()
 		return nil
 	}
 	return fmt.Errorf("unknown Todo field %s", name)
