@@ -96,6 +96,54 @@ var (
 		Columns:    GroupsColumns,
 		PrimaryKey: []*schema.Column{GroupsColumns[0]},
 	}
+	// ScoresColumns holds the columns for the "scores" table.
+	ScoresColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "scores_v1_scores", Type: field.TypeInt, Nullable: true},
+		{Name: "scores_v2_scores", Type: field.TypeInt, Nullable: true},
+	}
+	// ScoresTable holds the schema information for the "scores" table.
+	ScoresTable = &schema.Table{
+		Name:       "scores",
+		Columns:    ScoresColumns,
+		PrimaryKey: []*schema.Column{ScoresColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "scores_scores_v1s_Scores",
+				Columns:    []*schema.Column{ScoresColumns[1]},
+				RefColumns: []*schema.Column{ScoresV1sColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "scores_scores_v2s_Scores",
+				Columns:    []*schema.Column{ScoresColumns[2]},
+				RefColumns: []*schema.Column{ScoresV2sColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// ScoresV1sColumns holds the columns for the "scores_v1s" table.
+	ScoresV1sColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "score", Type: field.TypeInt},
+	}
+	// ScoresV1sTable holds the schema information for the "scores_v1s" table.
+	ScoresV1sTable = &schema.Table{
+		Name:       "scores_v1s",
+		Columns:    ScoresV1sColumns,
+		PrimaryKey: []*schema.Column{ScoresV1sColumns[0]},
+	}
+	// ScoresV2sColumns holds the columns for the "scores_v2s" table.
+	ScoresV2sColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "score", Type: field.TypeInt},
+	}
+	// ScoresV2sTable holds the schema information for the "scores_v2s" table.
+	ScoresV2sTable = &schema.Table{
+		Name:       "scores_v2s",
+		Columns:    ScoresV2sColumns,
+		PrimaryKey: []*schema.Column{ScoresV2sColumns[0]},
+	}
 	// TodosColumns holds the columns for the "todos" table.
 	TodosColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -108,6 +156,7 @@ var (
 		{Name: "custom", Type: field.TypeJSON, Nullable: true},
 		{Name: "customp", Type: field.TypeJSON, Nullable: true},
 		{Name: "category_id", Type: field.TypeInt, Nullable: true},
+		{Name: "scores_todo", Type: field.TypeInt, Nullable: true},
 		{Name: "todo_children", Type: field.TypeInt, Nullable: true},
 		{Name: "todo_secret", Type: field.TypeInt, Nullable: true},
 	}
@@ -124,14 +173,20 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 			{
-				Symbol:     "todos_todos_children",
+				Symbol:     "todos_scores_todo",
 				Columns:    []*schema.Column{TodosColumns[10]},
+				RefColumns: []*schema.Column{ScoresColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "todos_todos_children",
+				Columns:    []*schema.Column{TodosColumns[11]},
 				RefColumns: []*schema.Column{TodosColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "todos_very_secrets_secret",
-				Columns:    []*schema.Column{TodosColumns[11]},
+				Columns:    []*schema.Column{TodosColumns[12]},
 				RefColumns: []*schema.Column{VerySecretsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -192,6 +247,9 @@ var (
 		CategoriesTable,
 		FriendshipsTable,
 		GroupsTable,
+		ScoresTable,
+		ScoresV1sTable,
+		ScoresV2sTable,
 		TodosTable,
 		UsersTable,
 		VerySecretsTable,
@@ -202,9 +260,12 @@ var (
 func init() {
 	FriendshipsTable.ForeignKeys[0].RefTable = UsersTable
 	FriendshipsTable.ForeignKeys[1].RefTable = UsersTable
+	ScoresTable.ForeignKeys[0].RefTable = ScoresV1sTable
+	ScoresTable.ForeignKeys[1].RefTable = ScoresV2sTable
 	TodosTable.ForeignKeys[0].RefTable = CategoriesTable
-	TodosTable.ForeignKeys[1].RefTable = TodosTable
-	TodosTable.ForeignKeys[2].RefTable = VerySecretsTable
+	TodosTable.ForeignKeys[1].RefTable = ScoresTable
+	TodosTable.ForeignKeys[2].RefTable = TodosTable
+	TodosTable.ForeignKeys[3].RefTable = VerySecretsTable
 	UserGroupsTable.ForeignKeys[0].RefTable = UsersTable
 	UserGroupsTable.ForeignKeys[1].RefTable = GroupsTable
 }

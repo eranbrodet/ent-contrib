@@ -24,6 +24,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/predicate"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
 	"entgo.io/ent/dialect/sql"
@@ -42,6 +43,7 @@ type TodoQuery struct {
 	withChildren      *TodoQuery
 	withCategory      *CategoryQuery
 	withSecret        *VerySecretQuery
+	withScores        *ScoresQuery
 	withFKs           bool
 	modifiers         []func(*sql.Selector)
 	loadTotal         []func(context.Context, []*Todo) error
@@ -163,6 +165,28 @@ func (tq *TodoQuery) QuerySecret() *VerySecretQuery {
 			sqlgraph.From(todo.Table, todo.FieldID, selector),
 			sqlgraph.To(verysecret.Table, verysecret.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, todo.SecretTable, todo.SecretColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryScores chains the current query on the "scores" edge.
+func (tq *TodoQuery) QueryScores() *ScoresQuery {
+	query := (&ScoresClient{config: tq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(todo.Table, todo.FieldID, selector),
+			sqlgraph.To(scores.Table, scores.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, todo.ScoresTable, todo.ScoresColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
@@ -364,6 +388,7 @@ func (tq *TodoQuery) Clone() *TodoQuery {
 		withChildren: tq.withChildren.Clone(),
 		withCategory: tq.withCategory.Clone(),
 		withSecret:   tq.withSecret.Clone(),
+		withScores:   tq.withScores.Clone(),
 		// clone intermediate query.
 		sql:  tq.sql.Clone(),
 		path: tq.path,
@@ -411,6 +436,17 @@ func (tq *TodoQuery) WithSecret(opts ...func(*VerySecretQuery)) *TodoQuery {
 		opt(query)
 	}
 	tq.withSecret = query
+	return tq
+}
+
+// WithScores tells the query-builder to eager-load the nodes that are connected to
+// the "scores" edge. The optional arguments are used to configure the query builder of the edge.
+func (tq *TodoQuery) WithScores(opts ...func(*ScoresQuery)) *TodoQuery {
+	query := (&ScoresClient{config: tq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	tq.withScores = query
 	return tq
 }
 
@@ -493,14 +529,15 @@ func (tq *TodoQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Todo, e
 		nodes       = []*Todo{}
 		withFKs     = tq.withFKs
 		_spec       = tq.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [5]bool{
 			tq.withParent != nil,
 			tq.withChildren != nil,
 			tq.withCategory != nil,
 			tq.withSecret != nil,
+			tq.withScores != nil,
 		}
 	)
-	if tq.withParent != nil || tq.withCategory != nil || tq.withSecret != nil {
+	if tq.withParent != nil || tq.withCategory != nil || tq.withSecret != nil || tq.withScores != nil {
 		withFKs = true
 	}
 	if withFKs {
@@ -549,6 +586,12 @@ func (tq *TodoQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Todo, e
 	if query := tq.withSecret; query != nil {
 		if err := tq.loadSecret(ctx, query, nodes, nil,
 			func(n *Todo, e *VerySecret) { n.Edges.Secret = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := tq.withScores; query != nil {
+		if err := tq.loadScores(ctx, query, nodes, nil,
+			func(n *Todo, e *Scores) { n.Edges.Scores = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -684,6 +727,38 @@ func (tq *TodoQuery) loadSecret(ctx context.Context, query *VerySecretQuery, nod
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "todo_secret" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (tq *TodoQuery) loadScores(ctx context.Context, query *ScoresQuery, nodes []*Todo, init func(*Todo), assign func(*Todo, *Scores)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*Todo)
+	for i := range nodes {
+		if nodes[i].scores_todo == nil {
+			continue
+		}
+		fk := *nodes[i].scores_todo
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(scores.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "scores_todo" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)

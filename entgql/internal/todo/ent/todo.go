@@ -24,6 +24,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/customstruct"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
 	"entgo.io/ent/dialect/sql"
@@ -55,6 +56,7 @@ type Todo struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TodoQuery when eager-loading is set.
 	Edges         TodoEdges `json:"edges"`
+	scores_todo   *int
 	todo_children *int
 	todo_secret   *int
 }
@@ -69,11 +71,13 @@ type TodoEdges struct {
 	Category *Category `json:"category,omitempty"`
 	// Secret holds the value of the secret edge.
 	Secret *VerySecret `json:"secret,omitempty"`
+	// Scores holds the value of the scores edge.
+	Scores *Scores `json:"scores,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
 	namedChildren map[string][]*Todo
 }
@@ -126,6 +130,19 @@ func (e TodoEdges) SecretOrErr() (*VerySecret, error) {
 	return nil, &NotLoadedError{edge: "secret"}
 }
 
+// ScoresOrErr returns the Scores value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e TodoEdges) ScoresOrErr() (*Scores, error) {
+	if e.loadedTypes[4] {
+		if e.Scores == nil {
+			// Edge was loaded but was not found.
+			return nil, &NotFoundError{label: scores.Label}
+		}
+		return e.Scores, nil
+	}
+	return nil, &NotLoadedError{edge: "scores"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Todo) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -139,9 +156,11 @@ func (*Todo) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case todo.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
-		case todo.ForeignKeys[0]: // todo_children
+		case todo.ForeignKeys[0]: // scores_todo
 			values[i] = new(sql.NullInt64)
-		case todo.ForeignKeys[1]: // todo_secret
+		case todo.ForeignKeys[1]: // todo_children
+			values[i] = new(sql.NullInt64)
+		case todo.ForeignKeys[2]: // todo_secret
 			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Todo", columns[i])
@@ -226,12 +245,19 @@ func (t *Todo) assignValues(columns []string, values []any) error {
 			}
 		case todo.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field scores_todo", value)
+			} else if value.Valid {
+				t.scores_todo = new(int)
+				*t.scores_todo = int(value.Int64)
+			}
+		case todo.ForeignKeys[1]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field todo_children", value)
 			} else if value.Valid {
 				t.todo_children = new(int)
 				*t.todo_children = int(value.Int64)
 			}
-		case todo.ForeignKeys[1]:
+		case todo.ForeignKeys[2]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field todo_secret", value)
 			} else if value.Valid {
@@ -261,6 +287,11 @@ func (t *Todo) QueryCategory() *CategoryQuery {
 // QuerySecret queries the "secret" edge of the Todo entity.
 func (t *Todo) QuerySecret() *VerySecretQuery {
 	return NewTodoClient(t.config).QuerySecret(t)
+}
+
+// QueryScores queries the "scores" edge of the Todo entity.
+func (t *Todo) QueryScores() *ScoresQuery {
+	return NewTodoClient(t.config).QueryScores(t)
 }
 
 // Update returns a builder for updating this Todo.

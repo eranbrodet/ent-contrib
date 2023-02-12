@@ -19,6 +19,7 @@ package todo
 
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	"entgo.io/contrib/entgql/internal/todo/ent"
@@ -30,9 +31,23 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input ent.CreateC
 }
 
 func (r *mutationResolver) CreateTodo(ctx context.Context, input ent.CreateTodoInput) (*ent.Todo, error) {
+	scores, err := ent.FromContext(ctx).Scores.Create().Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = ent.FromContext(ctx).ScoresV1.Create().SetScore(rand.Int()).AddScores(scores).Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = ent.FromContext(ctx).ScoresV2.Create().SetScore(rand.Int()).AddScores(scores).Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return ent.FromContext(ctx).Todo.
 		Create().
 		SetInput(input).
+		SetScores(scores).
 		Save(ctx)
 }
 

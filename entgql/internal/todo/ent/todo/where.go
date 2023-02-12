@@ -477,6 +477,33 @@ func HasSecretWith(preds ...predicate.VerySecret) predicate.Todo {
 	})
 }
 
+// HasScores applies the HasEdge predicate on the "scores" edge.
+func HasScores() predicate.Todo {
+	return predicate.Todo(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ScoresTable, ScoresColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasScoresWith applies the HasEdge predicate on the "scores" edge with a given conditions (other predicates).
+func HasScoresWith(preds ...predicate.Scores) predicate.Todo {
+	return predicate.Todo(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(ScoresInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ScoresTable, ScoresColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Todo) predicate.Todo {
 	return predicate.Todo(func(s *sql.Selector) {

@@ -149,6 +149,7 @@ type CreateTodoInput struct {
 	ChildIDs   []int
 	CategoryID *int
 	SecretID   *int
+	ScoresID   *int
 }
 
 // Mutate applies the CreateTodoInput on the TodoMutation builder.
@@ -173,6 +174,9 @@ func (i *CreateTodoInput) Mutate(m *TodoMutation) {
 	if v := i.SecretID; v != nil {
 		m.SetSecretID(*v)
 	}
+	if v := i.ScoresID; v != nil {
+		m.SetScoresID(*v)
+	}
 }
 
 // SetInput applies the change-set in the CreateTodoInput on the TodoCreate builder.
@@ -195,6 +199,8 @@ type UpdateTodoInput struct {
 	RemoveChildIDs []int
 	ClearSecret    bool
 	SecretID       *int
+	ClearScores    bool
+	ScoresID       *int
 }
 
 // Mutate applies the UpdateTodoInput on the TodoMutation builder.
@@ -234,6 +240,12 @@ func (i *UpdateTodoInput) Mutate(m *TodoMutation) {
 	}
 	if v := i.SecretID; v != nil {
 		m.SetSecretID(*v)
+	}
+	if i.ClearScores {
+		m.ClearScores()
+	}
+	if v := i.ScoresID; v != nil {
+		m.SetScoresID(*v)
 	}
 }
 

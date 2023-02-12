@@ -438,6 +438,180 @@ func newGroupPaginateArgs(rv map[string]interface{}) *groupPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (s *ScoresQuery) CollectFields(ctx context.Context, satisfies ...string) (*ScoresQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return s, nil
+	}
+	if err := s.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *ScoresQuery) collectField(ctx context.Context, op *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	for _, field := range graphql.CollectFields(op, field.Selections, satisfies) {
+		switch field.Name {
+		case "todo":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TodoClient{config: s.config}).Query()
+			)
+			if err := query.collectField(ctx, op, field, path, satisfies...); err != nil {
+				return err
+			}
+			s.WithNamedTodo(alias, func(wq *TodoQuery) {
+				*wq = *query
+			})
+		case "scoresv1":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ScoresV1Client{config: s.config}).Query()
+			)
+			if err := query.collectField(ctx, op, field, path, satisfies...); err != nil {
+				return err
+			}
+			s.withScoresV1 = query
+		case "scoresv2":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ScoresV2Client{config: s.config}).Query()
+			)
+			if err := query.collectField(ctx, op, field, path, satisfies...); err != nil {
+				return err
+			}
+			s.withScoresV2 = query
+		}
+	}
+	return nil
+}
+
+type scoresPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ScoresPaginateOption
+}
+
+func newScoresPaginateArgs(rv map[string]interface{}) *scoresPaginateArgs {
+	args := &scoresPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ScoresWhereInput); ok {
+		args.opts = append(args.opts, WithScoresFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (s *ScoresV1Query) CollectFields(ctx context.Context, satisfies ...string) (*ScoresV1Query, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return s, nil
+	}
+	if err := s.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *ScoresV1Query) collectField(ctx context.Context, op *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	return nil
+}
+
+type scoresv1PaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ScoresV1PaginateOption
+}
+
+func newScoresV1PaginateArgs(rv map[string]interface{}) *scoresv1PaginateArgs {
+	args := &scoresv1PaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ScoresV1WhereInput); ok {
+		args.opts = append(args.opts, WithScoresV1Filter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (s *ScoresV2Query) CollectFields(ctx context.Context, satisfies ...string) (*ScoresV2Query, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return s, nil
+	}
+	if err := s.collectField(ctx, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *ScoresV2Query) collectField(ctx context.Context, op *graphql.OperationContext, field graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	return nil
+}
+
+type scoresv2PaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []ScoresV2PaginateOption
+}
+
+func newScoresV2PaginateArgs(rv map[string]interface{}) *scoresv2PaginateArgs {
+	args := &scoresv2PaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*ScoresV2WhereInput); ok {
+		args.opts = append(args.opts, WithScoresV2Filter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (t *TodoQuery) CollectFields(ctx context.Context, satisfies ...string) (*TodoQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -556,6 +730,16 @@ func (t *TodoQuery) collectField(ctx context.Context, op *graphql.OperationConte
 				return err
 			}
 			t.withCategory = query
+		case "scores":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&ScoresClient{config: t.config}).Query()
+			)
+			if err := query.collectField(ctx, op, field, path, satisfies...); err != nil {
+				return err
+			}
+			t.withScores = query
 		}
 	}
 	return nil

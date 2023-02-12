@@ -24,6 +24,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/customstruct"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -171,6 +172,25 @@ func (tc *TodoCreate) SetNillableSecretID(id *int) *TodoCreate {
 // SetSecret sets the "secret" edge to the VerySecret entity.
 func (tc *TodoCreate) SetSecret(v *VerySecret) *TodoCreate {
 	return tc.SetSecretID(v.ID)
+}
+
+// SetScoresID sets the "scores" edge to the Scores entity by ID.
+func (tc *TodoCreate) SetScoresID(id int) *TodoCreate {
+	tc.mutation.SetScoresID(id)
+	return tc
+}
+
+// SetNillableScoresID sets the "scores" edge to the Scores entity by ID if the given value is not nil.
+func (tc *TodoCreate) SetNillableScoresID(id *int) *TodoCreate {
+	if id != nil {
+		tc = tc.SetScoresID(*id)
+	}
+	return tc
+}
+
+// SetScores sets the "scores" edge to the Scores entity.
+func (tc *TodoCreate) SetScores(s *Scores) *TodoCreate {
+	return tc.SetScoresID(s.ID)
 }
 
 // Mutation returns the TodoMutation object of the builder.
@@ -383,6 +403,26 @@ func (tc *TodoCreate) createSpec() (*Todo, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.todo_secret = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tc.mutation.ScoresIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.ScoresTable,
+			Columns: []string{todo.ScoresColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: scores.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.scores_todo = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

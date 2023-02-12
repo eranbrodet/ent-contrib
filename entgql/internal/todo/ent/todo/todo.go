@@ -54,6 +54,8 @@ const (
 	EdgeCategory = "category"
 	// EdgeSecret holds the string denoting the secret edge name in mutations.
 	EdgeSecret = "secret"
+	// EdgeScores holds the string denoting the scores edge name in mutations.
+	EdgeScores = "scores"
 	// Table holds the table name of the todo in the database.
 	Table = "todos"
 	// ParentTable is the table that holds the parent relation/edge.
@@ -78,6 +80,13 @@ const (
 	SecretInverseTable = "very_secrets"
 	// SecretColumn is the table column denoting the secret relation/edge.
 	SecretColumn = "todo_secret"
+	// ScoresTable is the table that holds the scores relation/edge.
+	ScoresTable = "todos"
+	// ScoresInverseTable is the table name for the Scores entity.
+	// It exists in this package in order to avoid circular dependency with the "scores" package.
+	ScoresInverseTable = "scores"
+	// ScoresColumn is the table column denoting the scores relation/edge.
+	ScoresColumn = "scores_todo"
 )
 
 // Columns holds all SQL columns for todo fields.
@@ -97,6 +106,7 @@ var Columns = []string{
 // ForeignKeys holds the SQL foreign-keys that are owned by the "todos"
 // table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
+	"scores_todo",
 	"todo_children",
 	"todo_secret",
 }

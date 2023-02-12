@@ -105,6 +105,9 @@ func (Todo) Edges() []ent.Edge {
 			Immutable(),
 		edge.To("secret", VerySecret.Type).
 			Unique(),
+		edge.From("scores", Scores.Type).
+			Ref("todo").
+			Unique(),
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/todo/ent/predicate"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/customstruct"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
 	"entgo.io/ent/dialect/sql"
@@ -190,6 +191,25 @@ func (tu *TodoUpdate) SetSecret(v *VerySecret) *TodoUpdate {
 	return tu.SetSecretID(v.ID)
 }
 
+// SetScoresID sets the "scores" edge to the Scores entity by ID.
+func (tu *TodoUpdate) SetScoresID(id int) *TodoUpdate {
+	tu.mutation.SetScoresID(id)
+	return tu
+}
+
+// SetNillableScoresID sets the "scores" edge to the Scores entity by ID if the given value is not nil.
+func (tu *TodoUpdate) SetNillableScoresID(id *int) *TodoUpdate {
+	if id != nil {
+		tu = tu.SetScoresID(*id)
+	}
+	return tu
+}
+
+// SetScores sets the "scores" edge to the Scores entity.
+func (tu *TodoUpdate) SetScores(s *Scores) *TodoUpdate {
+	return tu.SetScoresID(s.ID)
+}
+
 // Mutation returns the TodoMutation object of the builder.
 func (tu *TodoUpdate) Mutation() *TodoMutation {
 	return tu.mutation
@@ -225,6 +245,12 @@ func (tu *TodoUpdate) RemoveChildren(t ...*Todo) *TodoUpdate {
 // ClearSecret clears the "secret" edge to the VerySecret entity.
 func (tu *TodoUpdate) ClearSecret() *TodoUpdate {
 	tu.mutation.ClearSecret()
+	return tu
+}
+
+// ClearScores clears the "scores" edge to the Scores entity.
+func (tu *TodoUpdate) ClearScores() *TodoUpdate {
+	tu.mutation.ClearScores()
 	return tu
 }
 
@@ -461,6 +487,41 @@ func (tu *TodoUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if tu.mutation.ScoresCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.ScoresTable,
+			Columns: []string{todo.ScoresColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: scores.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.ScoresIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.ScoresTable,
+			Columns: []string{todo.ScoresColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: scores.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, tu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{todo.Label}
@@ -627,6 +688,25 @@ func (tuo *TodoUpdateOne) SetSecret(v *VerySecret) *TodoUpdateOne {
 	return tuo.SetSecretID(v.ID)
 }
 
+// SetScoresID sets the "scores" edge to the Scores entity by ID.
+func (tuo *TodoUpdateOne) SetScoresID(id int) *TodoUpdateOne {
+	tuo.mutation.SetScoresID(id)
+	return tuo
+}
+
+// SetNillableScoresID sets the "scores" edge to the Scores entity by ID if the given value is not nil.
+func (tuo *TodoUpdateOne) SetNillableScoresID(id *int) *TodoUpdateOne {
+	if id != nil {
+		tuo = tuo.SetScoresID(*id)
+	}
+	return tuo
+}
+
+// SetScores sets the "scores" edge to the Scores entity.
+func (tuo *TodoUpdateOne) SetScores(s *Scores) *TodoUpdateOne {
+	return tuo.SetScoresID(s.ID)
+}
+
 // Mutation returns the TodoMutation object of the builder.
 func (tuo *TodoUpdateOne) Mutation() *TodoMutation {
 	return tuo.mutation
@@ -662,6 +742,12 @@ func (tuo *TodoUpdateOne) RemoveChildren(t ...*Todo) *TodoUpdateOne {
 // ClearSecret clears the "secret" edge to the VerySecret entity.
 func (tuo *TodoUpdateOne) ClearSecret() *TodoUpdateOne {
 	tuo.mutation.ClearSecret()
+	return tuo
+}
+
+// ClearScores clears the "scores" edge to the Scores entity.
+func (tuo *TodoUpdateOne) ClearScores() *TodoUpdateOne {
+	tuo.mutation.ClearScores()
 	return tuo
 }
 
@@ -914,6 +1000,41 @@ func (tuo *TodoUpdateOne) sqlSave(ctx context.Context) (_node *Todo, err error) 
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: verysecret.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tuo.mutation.ScoresCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.ScoresTable,
+			Columns: []string{todo.ScoresColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: scores.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.ScoresIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.ScoresTable,
+			Columns: []string{todo.ScoresColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: scores.FieldID,
 				},
 			},
 		}

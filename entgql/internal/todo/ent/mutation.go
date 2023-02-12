@@ -30,6 +30,9 @@ import (
 	"entgo.io/contrib/entgql/internal/todo/ent/predicate"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/customstruct"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/schematype"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv1"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv2"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/user"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
@@ -52,6 +55,9 @@ const (
 	TypeCategory    = "Category"
 	TypeFriendship  = "Friendship"
 	TypeGroup       = "Group"
+	TypeScores      = "Scores"
+	TypeScoresV1    = "ScoresV1"
+	TypeScoresV2    = "ScoresV2"
 	TypeTodo        = "Todo"
 	TypeUser        = "User"
 	TypeVerySecret  = "VerySecret"
@@ -2337,6 +2343,1391 @@ func (m *GroupMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Group edge %s", name)
 }
 
+// ScoresMutation represents an operation that mutates the Scores nodes in the graph.
+type ScoresMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	clearedFields    map[string]struct{}
+	todo             map[int]struct{}
+	removedtodo      map[int]struct{}
+	clearedtodo      bool
+	_ScoresV1        *int
+	cleared_ScoresV1 bool
+	_ScoresV2        *int
+	cleared_ScoresV2 bool
+	done             bool
+	oldValue         func(context.Context) (*Scores, error)
+	predicates       []predicate.Scores
+}
+
+var _ ent.Mutation = (*ScoresMutation)(nil)
+
+// scoresOption allows management of the mutation configuration using functional options.
+type scoresOption func(*ScoresMutation)
+
+// newScoresMutation creates new mutation for the Scores entity.
+func newScoresMutation(c config, op Op, opts ...scoresOption) *ScoresMutation {
+	m := &ScoresMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeScores,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withScoresID sets the ID field of the mutation.
+func withScoresID(id int) scoresOption {
+	return func(m *ScoresMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Scores
+		)
+		m.oldValue = func(ctx context.Context) (*Scores, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Scores.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withScores sets the old Scores of the mutation.
+func withScores(node *Scores) scoresOption {
+	return func(m *ScoresMutation) {
+		m.oldValue = func(context.Context) (*Scores, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ScoresMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ScoresMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ScoresMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ScoresMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Scores.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// AddTodoIDs adds the "todo" edge to the Todo entity by ids.
+func (m *ScoresMutation) AddTodoIDs(ids ...int) {
+	if m.todo == nil {
+		m.todo = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.todo[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTodo clears the "todo" edge to the Todo entity.
+func (m *ScoresMutation) ClearTodo() {
+	m.clearedtodo = true
+}
+
+// TodoCleared reports if the "todo" edge to the Todo entity was cleared.
+func (m *ScoresMutation) TodoCleared() bool {
+	return m.clearedtodo
+}
+
+// RemoveTodoIDs removes the "todo" edge to the Todo entity by IDs.
+func (m *ScoresMutation) RemoveTodoIDs(ids ...int) {
+	if m.removedtodo == nil {
+		m.removedtodo = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.todo, ids[i])
+		m.removedtodo[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTodo returns the removed IDs of the "todo" edge to the Todo entity.
+func (m *ScoresMutation) RemovedTodoIDs() (ids []int) {
+	for id := range m.removedtodo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TodoIDs returns the "todo" edge IDs in the mutation.
+func (m *ScoresMutation) TodoIDs() (ids []int) {
+	for id := range m.todo {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTodo resets all changes to the "todo" edge.
+func (m *ScoresMutation) ResetTodo() {
+	m.todo = nil
+	m.clearedtodo = false
+	m.removedtodo = nil
+}
+
+// SetScoresV1ID sets the "ScoresV1" edge to the ScoresV1 entity by id.
+func (m *ScoresMutation) SetScoresV1ID(id int) {
+	m._ScoresV1 = &id
+}
+
+// ClearScoresV1 clears the "ScoresV1" edge to the ScoresV1 entity.
+func (m *ScoresMutation) ClearScoresV1() {
+	m.cleared_ScoresV1 = true
+}
+
+// ScoresV1Cleared reports if the "ScoresV1" edge to the ScoresV1 entity was cleared.
+func (m *ScoresMutation) ScoresV1Cleared() bool {
+	return m.cleared_ScoresV1
+}
+
+// ScoresV1ID returns the "ScoresV1" edge ID in the mutation.
+func (m *ScoresMutation) ScoresV1ID() (id int, exists bool) {
+	if m._ScoresV1 != nil {
+		return *m._ScoresV1, true
+	}
+	return
+}
+
+// ScoresV1IDs returns the "ScoresV1" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ScoresV1ID instead. It exists only for internal usage by the builders.
+func (m *ScoresMutation) ScoresV1IDs() (ids []int) {
+	if id := m._ScoresV1; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetScoresV1 resets all changes to the "ScoresV1" edge.
+func (m *ScoresMutation) ResetScoresV1() {
+	m._ScoresV1 = nil
+	m.cleared_ScoresV1 = false
+}
+
+// SetScoresV2ID sets the "ScoresV2" edge to the ScoresV2 entity by id.
+func (m *ScoresMutation) SetScoresV2ID(id int) {
+	m._ScoresV2 = &id
+}
+
+// ClearScoresV2 clears the "ScoresV2" edge to the ScoresV2 entity.
+func (m *ScoresMutation) ClearScoresV2() {
+	m.cleared_ScoresV2 = true
+}
+
+// ScoresV2Cleared reports if the "ScoresV2" edge to the ScoresV2 entity was cleared.
+func (m *ScoresMutation) ScoresV2Cleared() bool {
+	return m.cleared_ScoresV2
+}
+
+// ScoresV2ID returns the "ScoresV2" edge ID in the mutation.
+func (m *ScoresMutation) ScoresV2ID() (id int, exists bool) {
+	if m._ScoresV2 != nil {
+		return *m._ScoresV2, true
+	}
+	return
+}
+
+// ScoresV2IDs returns the "ScoresV2" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ScoresV2ID instead. It exists only for internal usage by the builders.
+func (m *ScoresMutation) ScoresV2IDs() (ids []int) {
+	if id := m._ScoresV2; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetScoresV2 resets all changes to the "ScoresV2" edge.
+func (m *ScoresMutation) ResetScoresV2() {
+	m._ScoresV2 = nil
+	m.cleared_ScoresV2 = false
+}
+
+// Where appends a list predicates to the ScoresMutation builder.
+func (m *ScoresMutation) Where(ps ...predicate.Scores) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ScoresMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ScoresMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Scores, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ScoresMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ScoresMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Scores).
+func (m *ScoresMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ScoresMutation) Fields() []string {
+	fields := make([]string, 0, 0)
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ScoresMutation) Field(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ScoresMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, fmt.Errorf("unknown Scores field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Scores field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ScoresMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ScoresMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresMutation) AddField(name string, value ent.Value) error {
+	return fmt.Errorf("unknown Scores numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ScoresMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ScoresMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ScoresMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Scores nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ScoresMutation) ResetField(name string) error {
+	return fmt.Errorf("unknown Scores field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ScoresMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.todo != nil {
+		edges = append(edges, scores.EdgeTodo)
+	}
+	if m._ScoresV1 != nil {
+		edges = append(edges, scores.EdgeScoresV1)
+	}
+	if m._ScoresV2 != nil {
+		edges = append(edges, scores.EdgeScoresV2)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ScoresMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case scores.EdgeTodo:
+		ids := make([]ent.Value, 0, len(m.todo))
+		for id := range m.todo {
+			ids = append(ids, id)
+		}
+		return ids
+	case scores.EdgeScoresV1:
+		if id := m._ScoresV1; id != nil {
+			return []ent.Value{*id}
+		}
+	case scores.EdgeScoresV2:
+		if id := m._ScoresV2; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ScoresMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedtodo != nil {
+		edges = append(edges, scores.EdgeTodo)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ScoresMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case scores.EdgeTodo:
+		ids := make([]ent.Value, 0, len(m.removedtodo))
+		for id := range m.removedtodo {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ScoresMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedtodo {
+		edges = append(edges, scores.EdgeTodo)
+	}
+	if m.cleared_ScoresV1 {
+		edges = append(edges, scores.EdgeScoresV1)
+	}
+	if m.cleared_ScoresV2 {
+		edges = append(edges, scores.EdgeScoresV2)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ScoresMutation) EdgeCleared(name string) bool {
+	switch name {
+	case scores.EdgeTodo:
+		return m.clearedtodo
+	case scores.EdgeScoresV1:
+		return m.cleared_ScoresV1
+	case scores.EdgeScoresV2:
+		return m.cleared_ScoresV2
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ScoresMutation) ClearEdge(name string) error {
+	switch name {
+	case scores.EdgeScoresV1:
+		m.ClearScoresV1()
+		return nil
+	case scores.EdgeScoresV2:
+		m.ClearScoresV2()
+		return nil
+	}
+	return fmt.Errorf("unknown Scores unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ScoresMutation) ResetEdge(name string) error {
+	switch name {
+	case scores.EdgeTodo:
+		m.ResetTodo()
+		return nil
+	case scores.EdgeScoresV1:
+		m.ResetScoresV1()
+		return nil
+	case scores.EdgeScoresV2:
+		m.ResetScoresV2()
+		return nil
+	}
+	return fmt.Errorf("unknown Scores edge %s", name)
+}
+
+// ScoresV1Mutation represents an operation that mutates the ScoresV1 nodes in the graph.
+type ScoresV1Mutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	score          *int
+	addscore       *int
+	clearedFields  map[string]struct{}
+	_Scores        map[int]struct{}
+	removed_Scores map[int]struct{}
+	cleared_Scores bool
+	done           bool
+	oldValue       func(context.Context) (*ScoresV1, error)
+	predicates     []predicate.ScoresV1
+}
+
+var _ ent.Mutation = (*ScoresV1Mutation)(nil)
+
+// scoresv1Option allows management of the mutation configuration using functional options.
+type scoresv1Option func(*ScoresV1Mutation)
+
+// newScoresV1Mutation creates new mutation for the ScoresV1 entity.
+func newScoresV1Mutation(c config, op Op, opts ...scoresv1Option) *ScoresV1Mutation {
+	m := &ScoresV1Mutation{
+		config:        c,
+		op:            op,
+		typ:           TypeScoresV1,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withScoresV1ID sets the ID field of the mutation.
+func withScoresV1ID(id int) scoresv1Option {
+	return func(m *ScoresV1Mutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ScoresV1
+		)
+		m.oldValue = func(ctx context.Context) (*ScoresV1, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ScoresV1.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withScoresV1 sets the old ScoresV1 of the mutation.
+func withScoresV1(node *ScoresV1) scoresv1Option {
+	return func(m *ScoresV1Mutation) {
+		m.oldValue = func(context.Context) (*ScoresV1, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ScoresV1Mutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ScoresV1Mutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ScoresV1Mutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ScoresV1Mutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ScoresV1.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetScore sets the "score" field.
+func (m *ScoresV1Mutation) SetScore(i int) {
+	m.score = &i
+	m.addscore = nil
+}
+
+// Score returns the value of the "score" field in the mutation.
+func (m *ScoresV1Mutation) Score() (r int, exists bool) {
+	v := m.score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScore returns the old "score" field's value of the ScoresV1 entity.
+// If the ScoresV1 object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ScoresV1Mutation) OldScore(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScore is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScore requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScore: %w", err)
+	}
+	return oldValue.Score, nil
+}
+
+// AddScore adds i to the "score" field.
+func (m *ScoresV1Mutation) AddScore(i int) {
+	if m.addscore != nil {
+		*m.addscore += i
+	} else {
+		m.addscore = &i
+	}
+}
+
+// AddedScore returns the value that was added to the "score" field in this mutation.
+func (m *ScoresV1Mutation) AddedScore() (r int, exists bool) {
+	v := m.addscore
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetScore resets all changes to the "score" field.
+func (m *ScoresV1Mutation) ResetScore() {
+	m.score = nil
+	m.addscore = nil
+}
+
+// AddScoreIDs adds the "Scores" edge to the Scores entity by ids.
+func (m *ScoresV1Mutation) AddScoreIDs(ids ...int) {
+	if m._Scores == nil {
+		m._Scores = make(map[int]struct{})
+	}
+	for i := range ids {
+		m._Scores[ids[i]] = struct{}{}
+	}
+}
+
+// ClearScores clears the "Scores" edge to the Scores entity.
+func (m *ScoresV1Mutation) ClearScores() {
+	m.cleared_Scores = true
+}
+
+// ScoresCleared reports if the "Scores" edge to the Scores entity was cleared.
+func (m *ScoresV1Mutation) ScoresCleared() bool {
+	return m.cleared_Scores
+}
+
+// RemoveScoreIDs removes the "Scores" edge to the Scores entity by IDs.
+func (m *ScoresV1Mutation) RemoveScoreIDs(ids ...int) {
+	if m.removed_Scores == nil {
+		m.removed_Scores = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m._Scores, ids[i])
+		m.removed_Scores[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedScores returns the removed IDs of the "Scores" edge to the Scores entity.
+func (m *ScoresV1Mutation) RemovedScoresIDs() (ids []int) {
+	for id := range m.removed_Scores {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ScoresIDs returns the "Scores" edge IDs in the mutation.
+func (m *ScoresV1Mutation) ScoresIDs() (ids []int) {
+	for id := range m._Scores {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetScores resets all changes to the "Scores" edge.
+func (m *ScoresV1Mutation) ResetScores() {
+	m._Scores = nil
+	m.cleared_Scores = false
+	m.removed_Scores = nil
+}
+
+// Where appends a list predicates to the ScoresV1Mutation builder.
+func (m *ScoresV1Mutation) Where(ps ...predicate.ScoresV1) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ScoresV1Mutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ScoresV1Mutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ScoresV1, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ScoresV1Mutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ScoresV1Mutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ScoresV1).
+func (m *ScoresV1Mutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ScoresV1Mutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.score != nil {
+		fields = append(fields, scoresv1.FieldScore)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ScoresV1Mutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case scoresv1.FieldScore:
+		return m.Score()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ScoresV1Mutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case scoresv1.FieldScore:
+		return m.OldScore(ctx)
+	}
+	return nil, fmt.Errorf("unknown ScoresV1 field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresV1Mutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case scoresv1.FieldScore:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScore(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV1 field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ScoresV1Mutation) AddedFields() []string {
+	var fields []string
+	if m.addscore != nil {
+		fields = append(fields, scoresv1.FieldScore)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ScoresV1Mutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case scoresv1.FieldScore:
+		return m.AddedScore()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresV1Mutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case scoresv1.FieldScore:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddScore(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV1 numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ScoresV1Mutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ScoresV1Mutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ScoresV1Mutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ScoresV1 nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ScoresV1Mutation) ResetField(name string) error {
+	switch name {
+	case scoresv1.FieldScore:
+		m.ResetScore()
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV1 field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ScoresV1Mutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m._Scores != nil {
+		edges = append(edges, scoresv1.EdgeScores)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ScoresV1Mutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case scoresv1.EdgeScores:
+		ids := make([]ent.Value, 0, len(m._Scores))
+		for id := range m._Scores {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ScoresV1Mutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removed_Scores != nil {
+		edges = append(edges, scoresv1.EdgeScores)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ScoresV1Mutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case scoresv1.EdgeScores:
+		ids := make([]ent.Value, 0, len(m.removed_Scores))
+		for id := range m.removed_Scores {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ScoresV1Mutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleared_Scores {
+		edges = append(edges, scoresv1.EdgeScores)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ScoresV1Mutation) EdgeCleared(name string) bool {
+	switch name {
+	case scoresv1.EdgeScores:
+		return m.cleared_Scores
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ScoresV1Mutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ScoresV1 unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ScoresV1Mutation) ResetEdge(name string) error {
+	switch name {
+	case scoresv1.EdgeScores:
+		m.ResetScores()
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV1 edge %s", name)
+}
+
+// ScoresV2Mutation represents an operation that mutates the ScoresV2 nodes in the graph.
+type ScoresV2Mutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	score          *int
+	addscore       *int
+	clearedFields  map[string]struct{}
+	_Scores        map[int]struct{}
+	removed_Scores map[int]struct{}
+	cleared_Scores bool
+	done           bool
+	oldValue       func(context.Context) (*ScoresV2, error)
+	predicates     []predicate.ScoresV2
+}
+
+var _ ent.Mutation = (*ScoresV2Mutation)(nil)
+
+// scoresv2Option allows management of the mutation configuration using functional options.
+type scoresv2Option func(*ScoresV2Mutation)
+
+// newScoresV2Mutation creates new mutation for the ScoresV2 entity.
+func newScoresV2Mutation(c config, op Op, opts ...scoresv2Option) *ScoresV2Mutation {
+	m := &ScoresV2Mutation{
+		config:        c,
+		op:            op,
+		typ:           TypeScoresV2,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withScoresV2ID sets the ID field of the mutation.
+func withScoresV2ID(id int) scoresv2Option {
+	return func(m *ScoresV2Mutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ScoresV2
+		)
+		m.oldValue = func(ctx context.Context) (*ScoresV2, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ScoresV2.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withScoresV2 sets the old ScoresV2 of the mutation.
+func withScoresV2(node *ScoresV2) scoresv2Option {
+	return func(m *ScoresV2Mutation) {
+		m.oldValue = func(context.Context) (*ScoresV2, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ScoresV2Mutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ScoresV2Mutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ScoresV2Mutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ScoresV2Mutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ScoresV2.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetScore sets the "score" field.
+func (m *ScoresV2Mutation) SetScore(i int) {
+	m.score = &i
+	m.addscore = nil
+}
+
+// Score returns the value of the "score" field in the mutation.
+func (m *ScoresV2Mutation) Score() (r int, exists bool) {
+	v := m.score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScore returns the old "score" field's value of the ScoresV2 entity.
+// If the ScoresV2 object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ScoresV2Mutation) OldScore(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScore is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScore requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScore: %w", err)
+	}
+	return oldValue.Score, nil
+}
+
+// AddScore adds i to the "score" field.
+func (m *ScoresV2Mutation) AddScore(i int) {
+	if m.addscore != nil {
+		*m.addscore += i
+	} else {
+		m.addscore = &i
+	}
+}
+
+// AddedScore returns the value that was added to the "score" field in this mutation.
+func (m *ScoresV2Mutation) AddedScore() (r int, exists bool) {
+	v := m.addscore
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetScore resets all changes to the "score" field.
+func (m *ScoresV2Mutation) ResetScore() {
+	m.score = nil
+	m.addscore = nil
+}
+
+// AddScoreIDs adds the "Scores" edge to the Scores entity by ids.
+func (m *ScoresV2Mutation) AddScoreIDs(ids ...int) {
+	if m._Scores == nil {
+		m._Scores = make(map[int]struct{})
+	}
+	for i := range ids {
+		m._Scores[ids[i]] = struct{}{}
+	}
+}
+
+// ClearScores clears the "Scores" edge to the Scores entity.
+func (m *ScoresV2Mutation) ClearScores() {
+	m.cleared_Scores = true
+}
+
+// ScoresCleared reports if the "Scores" edge to the Scores entity was cleared.
+func (m *ScoresV2Mutation) ScoresCleared() bool {
+	return m.cleared_Scores
+}
+
+// RemoveScoreIDs removes the "Scores" edge to the Scores entity by IDs.
+func (m *ScoresV2Mutation) RemoveScoreIDs(ids ...int) {
+	if m.removed_Scores == nil {
+		m.removed_Scores = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m._Scores, ids[i])
+		m.removed_Scores[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedScores returns the removed IDs of the "Scores" edge to the Scores entity.
+func (m *ScoresV2Mutation) RemovedScoresIDs() (ids []int) {
+	for id := range m.removed_Scores {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ScoresIDs returns the "Scores" edge IDs in the mutation.
+func (m *ScoresV2Mutation) ScoresIDs() (ids []int) {
+	for id := range m._Scores {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetScores resets all changes to the "Scores" edge.
+func (m *ScoresV2Mutation) ResetScores() {
+	m._Scores = nil
+	m.cleared_Scores = false
+	m.removed_Scores = nil
+}
+
+// Where appends a list predicates to the ScoresV2Mutation builder.
+func (m *ScoresV2Mutation) Where(ps ...predicate.ScoresV2) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ScoresV2Mutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ScoresV2Mutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ScoresV2, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ScoresV2Mutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ScoresV2Mutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ScoresV2).
+func (m *ScoresV2Mutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ScoresV2Mutation) Fields() []string {
+	fields := make([]string, 0, 1)
+	if m.score != nil {
+		fields = append(fields, scoresv2.FieldScore)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ScoresV2Mutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case scoresv2.FieldScore:
+		return m.Score()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ScoresV2Mutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case scoresv2.FieldScore:
+		return m.OldScore(ctx)
+	}
+	return nil, fmt.Errorf("unknown ScoresV2 field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresV2Mutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case scoresv2.FieldScore:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScore(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV2 field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ScoresV2Mutation) AddedFields() []string {
+	var fields []string
+	if m.addscore != nil {
+		fields = append(fields, scoresv2.FieldScore)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ScoresV2Mutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case scoresv2.FieldScore:
+		return m.AddedScore()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ScoresV2Mutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case scoresv2.FieldScore:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddScore(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV2 numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ScoresV2Mutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ScoresV2Mutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ScoresV2Mutation) ClearField(name string) error {
+	return fmt.Errorf("unknown ScoresV2 nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ScoresV2Mutation) ResetField(name string) error {
+	switch name {
+	case scoresv2.FieldScore:
+		m.ResetScore()
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV2 field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ScoresV2Mutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m._Scores != nil {
+		edges = append(edges, scoresv2.EdgeScores)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ScoresV2Mutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case scoresv2.EdgeScores:
+		ids := make([]ent.Value, 0, len(m._Scores))
+		for id := range m._Scores {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ScoresV2Mutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removed_Scores != nil {
+		edges = append(edges, scoresv2.EdgeScores)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ScoresV2Mutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case scoresv2.EdgeScores:
+		ids := make([]ent.Value, 0, len(m.removed_Scores))
+		for id := range m.removed_Scores {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ScoresV2Mutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleared_Scores {
+		edges = append(edges, scoresv2.EdgeScores)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ScoresV2Mutation) EdgeCleared(name string) bool {
+	switch name {
+	case scoresv2.EdgeScores:
+		return m.cleared_Scores
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ScoresV2Mutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown ScoresV2 unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ScoresV2Mutation) ResetEdge(name string) error {
+	switch name {
+	case scoresv2.EdgeScores:
+		m.ResetScores()
+		return nil
+	}
+	return fmt.Errorf("unknown ScoresV2 edge %s", name)
+}
+
 // TodoMutation represents an operation that mutates the Todo nodes in the graph.
 type TodoMutation struct {
 	config
@@ -2364,6 +3755,8 @@ type TodoMutation struct {
 	clearedcategory bool
 	secret          *int
 	clearedsecret   bool
+	scores          *int
+	clearedscores   bool
 	done            bool
 	oldValue        func(context.Context) (*Todo, error)
 	predicates      []predicate.Todo
@@ -3066,6 +4459,45 @@ func (m *TodoMutation) ResetSecret() {
 	m.clearedsecret = false
 }
 
+// SetScoresID sets the "scores" edge to the Scores entity by id.
+func (m *TodoMutation) SetScoresID(id int) {
+	m.scores = &id
+}
+
+// ClearScores clears the "scores" edge to the Scores entity.
+func (m *TodoMutation) ClearScores() {
+	m.clearedscores = true
+}
+
+// ScoresCleared reports if the "scores" edge to the Scores entity was cleared.
+func (m *TodoMutation) ScoresCleared() bool {
+	return m.clearedscores
+}
+
+// ScoresID returns the "scores" edge ID in the mutation.
+func (m *TodoMutation) ScoresID() (id int, exists bool) {
+	if m.scores != nil {
+		return *m.scores, true
+	}
+	return
+}
+
+// ScoresIDs returns the "scores" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ScoresID instead. It exists only for internal usage by the builders.
+func (m *TodoMutation) ScoresIDs() (ids []int) {
+	if id := m.scores; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetScores resets all changes to the "scores" edge.
+func (m *TodoMutation) ResetScores() {
+	m.scores = nil
+	m.clearedscores = false
+}
+
 // Where appends a list predicates to the TodoMutation builder.
 func (m *TodoMutation) Where(ps ...predicate.Todo) {
 	m.predicates = append(m.predicates, ps...)
@@ -3383,7 +4815,7 @@ func (m *TodoMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TodoMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.parent != nil {
 		edges = append(edges, todo.EdgeParent)
 	}
@@ -3395,6 +4827,9 @@ func (m *TodoMutation) AddedEdges() []string {
 	}
 	if m.secret != nil {
 		edges = append(edges, todo.EdgeSecret)
+	}
+	if m.scores != nil {
+		edges = append(edges, todo.EdgeScores)
 	}
 	return edges
 }
@@ -3421,13 +4856,17 @@ func (m *TodoMutation) AddedIDs(name string) []ent.Value {
 		if id := m.secret; id != nil {
 			return []ent.Value{*id}
 		}
+	case todo.EdgeScores:
+		if id := m.scores; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TodoMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedchildren != nil {
 		edges = append(edges, todo.EdgeChildren)
 	}
@@ -3450,7 +4889,7 @@ func (m *TodoMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TodoMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.clearedparent {
 		edges = append(edges, todo.EdgeParent)
 	}
@@ -3462,6 +4901,9 @@ func (m *TodoMutation) ClearedEdges() []string {
 	}
 	if m.clearedsecret {
 		edges = append(edges, todo.EdgeSecret)
+	}
+	if m.clearedscores {
+		edges = append(edges, todo.EdgeScores)
 	}
 	return edges
 }
@@ -3478,6 +4920,8 @@ func (m *TodoMutation) EdgeCleared(name string) bool {
 		return m.clearedcategory
 	case todo.EdgeSecret:
 		return m.clearedsecret
+	case todo.EdgeScores:
+		return m.clearedscores
 	}
 	return false
 }
@@ -3494,6 +4938,9 @@ func (m *TodoMutation) ClearEdge(name string) error {
 		return nil
 	case todo.EdgeSecret:
 		m.ClearSecret()
+		return nil
+	case todo.EdgeScores:
+		m.ClearScores()
 		return nil
 	}
 	return fmt.Errorf("unknown Todo unique edge %s", name)
@@ -3514,6 +4961,9 @@ func (m *TodoMutation) ResetEdge(name string) error {
 		return nil
 	case todo.EdgeSecret:
 		m.ResetSecret()
+		return nil
+	case todo.EdgeScores:
+		m.ResetScores()
 		return nil
 	}
 	return fmt.Errorf("unknown Todo edge %s", name)

@@ -27,6 +27,9 @@ import (
 	"entgo.io/contrib/entgql/internal/todo/ent/group"
 	"entgo.io/contrib/entgql/internal/todo/ent/predicate"
 	"entgo.io/contrib/entgql/internal/todo/ent/schema/schematype"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv1"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv2"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/user"
 	"github.com/google/uuid"
@@ -1080,6 +1083,512 @@ func (i *GroupWhereInput) P() (predicate.Group, error) {
 	}
 }
 
+// ScoresWhereInput represents a where input for filtering Scores queries.
+type ScoresWhereInput struct {
+	Predicates []predicate.Scores  `json:"-"`
+	Not        *ScoresWhereInput   `json:"not,omitempty"`
+	Or         []*ScoresWhereInput `json:"or,omitempty"`
+	And        []*ScoresWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "todo" edge predicates.
+	HasTodo     *bool             `json:"hasTodo,omitempty"`
+	HasTodoWith []*TodoWhereInput `json:"hasTodoWith,omitempty"`
+
+	// "ScoresV1" edge predicates.
+	HasScoresV1     *bool                 `json:"hasScoresV1,omitempty"`
+	HasScoresV1With []*ScoresV1WhereInput `json:"hasScoresV1With,omitempty"`
+
+	// "ScoresV2" edge predicates.
+	HasScoresV2     *bool                 `json:"hasScoresV2,omitempty"`
+	HasScoresV2With []*ScoresV2WhereInput `json:"hasScoresV2With,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ScoresWhereInput) AddPredicates(predicates ...predicate.Scores) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ScoresWhereInput filter on the ScoresQuery builder.
+func (i *ScoresWhereInput) Filter(q *ScoresQuery) (*ScoresQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyScoresWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyScoresWhereInput is returned in case the ScoresWhereInput is empty.
+var ErrEmptyScoresWhereInput = errors.New("ent: empty predicate ScoresWhereInput")
+
+// P returns a predicate for filtering scoresslice.
+// An error is returned if the input is empty or invalid.
+func (i *ScoresWhereInput) P() (predicate.Scores, error) {
+	var predicates []predicate.Scores
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, scores.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Scores, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, scores.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Scores, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, scores.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, scores.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, scores.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, scores.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, scores.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, scores.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, scores.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, scores.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, scores.IDLTE(*i.IDLTE))
+	}
+
+	if i.HasTodo != nil {
+		p := scores.HasTodo()
+		if !*i.HasTodo {
+			p = scores.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasTodoWith) > 0 {
+		with := make([]predicate.Todo, 0, len(i.HasTodoWith))
+		for _, w := range i.HasTodoWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasTodoWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, scores.HasTodoWith(with...))
+	}
+	if i.HasScoresV1 != nil {
+		p := scores.HasScoresV1()
+		if !*i.HasScoresV1 {
+			p = scores.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasScoresV1With) > 0 {
+		with := make([]predicate.ScoresV1, 0, len(i.HasScoresV1With))
+		for _, w := range i.HasScoresV1With {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasScoresV1With'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, scores.HasScoresV1With(with...))
+	}
+	if i.HasScoresV2 != nil {
+		p := scores.HasScoresV2()
+		if !*i.HasScoresV2 {
+			p = scores.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasScoresV2With) > 0 {
+		with := make([]predicate.ScoresV2, 0, len(i.HasScoresV2With))
+		for _, w := range i.HasScoresV2With {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasScoresV2With'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, scores.HasScoresV2With(with...))
+	}
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyScoresWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return scores.And(predicates...), nil
+	}
+}
+
+// ScoresV1WhereInput represents a where input for filtering ScoresV1 queries.
+type ScoresV1WhereInput struct {
+	Predicates []predicate.ScoresV1  `json:"-"`
+	Not        *ScoresV1WhereInput   `json:"not,omitempty"`
+	Or         []*ScoresV1WhereInput `json:"or,omitempty"`
+	And        []*ScoresV1WhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "score" field predicates.
+	Score      *int  `json:"score,omitempty"`
+	ScoreNEQ   *int  `json:"scoreNEQ,omitempty"`
+	ScoreIn    []int `json:"scoreIn,omitempty"`
+	ScoreNotIn []int `json:"scoreNotIn,omitempty"`
+	ScoreGT    *int  `json:"scoreGT,omitempty"`
+	ScoreGTE   *int  `json:"scoreGTE,omitempty"`
+	ScoreLT    *int  `json:"scoreLT,omitempty"`
+	ScoreLTE   *int  `json:"scoreLTE,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ScoresV1WhereInput) AddPredicates(predicates ...predicate.ScoresV1) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ScoresV1WhereInput filter on the ScoresV1Query builder.
+func (i *ScoresV1WhereInput) Filter(q *ScoresV1Query) (*ScoresV1Query, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyScoresV1WhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyScoresV1WhereInput is returned in case the ScoresV1WhereInput is empty.
+var ErrEmptyScoresV1WhereInput = errors.New("ent: empty predicate ScoresV1WhereInput")
+
+// P returns a predicate for filtering scoresv1s.
+// An error is returned if the input is empty or invalid.
+func (i *ScoresV1WhereInput) P() (predicate.ScoresV1, error) {
+	var predicates []predicate.ScoresV1
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, scoresv1.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ScoresV1, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, scoresv1.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ScoresV1, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, scoresv1.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, scoresv1.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, scoresv1.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, scoresv1.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, scoresv1.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, scoresv1.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, scoresv1.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, scoresv1.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, scoresv1.IDLTE(*i.IDLTE))
+	}
+	if i.Score != nil {
+		predicates = append(predicates, scoresv1.ScoreEQ(*i.Score))
+	}
+	if i.ScoreNEQ != nil {
+		predicates = append(predicates, scoresv1.ScoreNEQ(*i.ScoreNEQ))
+	}
+	if len(i.ScoreIn) > 0 {
+		predicates = append(predicates, scoresv1.ScoreIn(i.ScoreIn...))
+	}
+	if len(i.ScoreNotIn) > 0 {
+		predicates = append(predicates, scoresv1.ScoreNotIn(i.ScoreNotIn...))
+	}
+	if i.ScoreGT != nil {
+		predicates = append(predicates, scoresv1.ScoreGT(*i.ScoreGT))
+	}
+	if i.ScoreGTE != nil {
+		predicates = append(predicates, scoresv1.ScoreGTE(*i.ScoreGTE))
+	}
+	if i.ScoreLT != nil {
+		predicates = append(predicates, scoresv1.ScoreLT(*i.ScoreLT))
+	}
+	if i.ScoreLTE != nil {
+		predicates = append(predicates, scoresv1.ScoreLTE(*i.ScoreLTE))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyScoresV1WhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return scoresv1.And(predicates...), nil
+	}
+}
+
+// ScoresV2WhereInput represents a where input for filtering ScoresV2 queries.
+type ScoresV2WhereInput struct {
+	Predicates []predicate.ScoresV2  `json:"-"`
+	Not        *ScoresV2WhereInput   `json:"not,omitempty"`
+	Or         []*ScoresV2WhereInput `json:"or,omitempty"`
+	And        []*ScoresV2WhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "score" field predicates.
+	Score      *int  `json:"score,omitempty"`
+	ScoreNEQ   *int  `json:"scoreNEQ,omitempty"`
+	ScoreIn    []int `json:"scoreIn,omitempty"`
+	ScoreNotIn []int `json:"scoreNotIn,omitempty"`
+	ScoreGT    *int  `json:"scoreGT,omitempty"`
+	ScoreGTE   *int  `json:"scoreGTE,omitempty"`
+	ScoreLT    *int  `json:"scoreLT,omitempty"`
+	ScoreLTE   *int  `json:"scoreLTE,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *ScoresV2WhereInput) AddPredicates(predicates ...predicate.ScoresV2) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the ScoresV2WhereInput filter on the ScoresV2Query builder.
+func (i *ScoresV2WhereInput) Filter(q *ScoresV2Query) (*ScoresV2Query, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyScoresV2WhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyScoresV2WhereInput is returned in case the ScoresV2WhereInput is empty.
+var ErrEmptyScoresV2WhereInput = errors.New("ent: empty predicate ScoresV2WhereInput")
+
+// P returns a predicate for filtering scoresv2s.
+// An error is returned if the input is empty or invalid.
+func (i *ScoresV2WhereInput) P() (predicate.ScoresV2, error) {
+	var predicates []predicate.ScoresV2
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, scoresv2.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.ScoresV2, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, scoresv2.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.ScoresV2, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, scoresv2.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, scoresv2.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, scoresv2.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, scoresv2.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, scoresv2.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, scoresv2.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, scoresv2.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, scoresv2.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, scoresv2.IDLTE(*i.IDLTE))
+	}
+	if i.Score != nil {
+		predicates = append(predicates, scoresv2.ScoreEQ(*i.Score))
+	}
+	if i.ScoreNEQ != nil {
+		predicates = append(predicates, scoresv2.ScoreNEQ(*i.ScoreNEQ))
+	}
+	if len(i.ScoreIn) > 0 {
+		predicates = append(predicates, scoresv2.ScoreIn(i.ScoreIn...))
+	}
+	if len(i.ScoreNotIn) > 0 {
+		predicates = append(predicates, scoresv2.ScoreNotIn(i.ScoreNotIn...))
+	}
+	if i.ScoreGT != nil {
+		predicates = append(predicates, scoresv2.ScoreGT(*i.ScoreGT))
+	}
+	if i.ScoreGTE != nil {
+		predicates = append(predicates, scoresv2.ScoreGTE(*i.ScoreGTE))
+	}
+	if i.ScoreLT != nil {
+		predicates = append(predicates, scoresv2.ScoreLT(*i.ScoreLT))
+	}
+	if i.ScoreLTE != nil {
+		predicates = append(predicates, scoresv2.ScoreLTE(*i.ScoreLTE))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyScoresV2WhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return scoresv2.And(predicates...), nil
+	}
+}
+
 // TodoWhereInput represents a where input for filtering Todo queries.
 type TodoWhereInput struct {
 	Predicates []predicate.Todo  `json:"-"`
@@ -1157,6 +1666,10 @@ type TodoWhereInput struct {
 	// "category" edge predicates.
 	HasCategory     *bool                 `json:"hasCategory,omitempty"`
 	HasCategoryWith []*CategoryWhereInput `json:"hasCategoryWith,omitempty"`
+
+	// "scores" edge predicates.
+	HasScores     *bool               `json:"hasScores,omitempty"`
+	HasScoresWith []*ScoresWhereInput `json:"hasScoresWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -1425,6 +1938,24 @@ func (i *TodoWhereInput) P() (predicate.Todo, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, todo.HasCategoryWith(with...))
+	}
+	if i.HasScores != nil {
+		p := todo.HasScores()
+		if !*i.HasScores {
+			p = todo.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasScoresWith) > 0 {
+		with := make([]predicate.Scores, 0, len(i.HasScoresWith))
+		for _, w := range i.HasScoresWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasScoresWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, todo.HasScoresWith(with...))
 	}
 	switch len(predicates) {
 	case 0:

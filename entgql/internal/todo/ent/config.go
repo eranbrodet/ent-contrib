@@ -45,6 +45,9 @@ type (
 		Category    []ent.Hook
 		Friendship  []ent.Hook
 		Group       []ent.Hook
+		Scores      []ent.Hook
+		ScoresV1    []ent.Hook
+		ScoresV2    []ent.Hook
 		Todo        []ent.Hook
 		User        []ent.Hook
 		VerySecret  []ent.Hook
@@ -54,6 +57,9 @@ type (
 		Category    []ent.Interceptor
 		Friendship  []ent.Interceptor
 		Group       []ent.Interceptor
+		Scores      []ent.Interceptor
+		ScoresV1    []ent.Interceptor
+		ScoresV2    []ent.Interceptor
 		Todo        []ent.Interceptor
 		User        []ent.Interceptor
 		VerySecret  []ent.Interceptor

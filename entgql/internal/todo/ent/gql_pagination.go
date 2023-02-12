@@ -29,6 +29,9 @@ import (
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/friendship"
 	"entgo.io/contrib/entgql/internal/todo/ent/group"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv1"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv2"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/user"
 	"entgo.io/ent/dialect/sql"
@@ -1238,6 +1241,699 @@ func (gr *Group) ToEdge(order *GroupOrder) *GroupEdge {
 	return &GroupEdge{
 		Node:   gr,
 		Cursor: order.Field.toCursor(gr),
+	}
+}
+
+// ScoresEdge is the edge representation of Scores.
+type ScoresEdge struct {
+	Node   *Scores `json:"node"`
+	Cursor Cursor  `json:"cursor"`
+}
+
+// ScoresConnection is the connection containing edges to Scores.
+type ScoresConnection struct {
+	Edges      []*ScoresEdge `json:"edges"`
+	PageInfo   PageInfo      `json:"pageInfo"`
+	TotalCount int           `json:"totalCount"`
+}
+
+func (c *ScoresConnection) build(nodes []*Scores, pager *scoresPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Scores
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Scores {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Scores {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ScoresEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ScoresEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ScoresPaginateOption enables pagination customization.
+type ScoresPaginateOption func(*scoresPager) error
+
+// WithScoresOrder configures pagination ordering.
+func WithScoresOrder(order *ScoresOrder) ScoresPaginateOption {
+	if order == nil {
+		order = DefaultScoresOrder
+	}
+	o := *order
+	return func(pager *scoresPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultScoresOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithScoresFilter configures pagination filter.
+func WithScoresFilter(filter func(*ScoresQuery) (*ScoresQuery, error)) ScoresPaginateOption {
+	return func(pager *scoresPager) error {
+		if filter == nil {
+			return errors.New("ScoresQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type scoresPager struct {
+	order  *ScoresOrder
+	filter func(*ScoresQuery) (*ScoresQuery, error)
+}
+
+func newScoresPager(opts []ScoresPaginateOption) (*scoresPager, error) {
+	pager := &scoresPager{}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultScoresOrder
+	}
+	return pager, nil
+}
+
+func (p *scoresPager) applyFilter(query *ScoresQuery) (*ScoresQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *scoresPager) toCursor(s *Scores) Cursor {
+	return p.order.Field.toCursor(s)
+}
+
+func (p *scoresPager) applyCursors(query *ScoresQuery, after, before *Cursor) *ScoresQuery {
+	for _, predicate := range cursorsToPredicates(
+		p.order.Direction, after, before,
+		p.order.Field.field, DefaultScoresOrder.Field.field,
+	) {
+		query = query.Where(predicate)
+	}
+	return query
+}
+
+func (p *scoresPager) applyOrder(query *ScoresQuery, reverse bool) *ScoresQuery {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	query = query.Order(direction.orderFunc(p.order.Field.field))
+	if p.order.Field != DefaultScoresOrder.Field {
+		query = query.Order(direction.orderFunc(DefaultScoresOrder.Field.field))
+	}
+	return query
+}
+
+func (p *scoresPager) orderExpr(reverse bool) sql.Querier {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.field).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultScoresOrder.Field {
+			b.Comma().Ident(DefaultScoresOrder.Field.field).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Scores.
+func (s *ScoresQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ScoresPaginateOption,
+) (*ScoresConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newScoresPager(opts)
+	if err != nil {
+		return nil, err
+	}
+	if s, err = pager.applyFilter(s); err != nil {
+		return nil, err
+	}
+	conn := &ScoresConnection{Edges: []*ScoresEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			if conn.TotalCount, err = s.Clone().Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+
+	s = pager.applyCursors(s, after, before)
+	s = pager.applyOrder(s, last != nil)
+	if limit := paginateLimit(first, last); limit != 0 {
+		s.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := s.collectField(ctx, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+
+	nodes, err := s.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// ScoresOrderField defines the ordering field of Scores.
+type ScoresOrderField struct {
+	field    string
+	toCursor func(*Scores) Cursor
+}
+
+// ScoresOrder defines the ordering of Scores.
+type ScoresOrder struct {
+	Direction OrderDirection    `json:"direction"`
+	Field     *ScoresOrderField `json:"field"`
+}
+
+// DefaultScoresOrder is the default ordering of Scores.
+var DefaultScoresOrder = &ScoresOrder{
+	Direction: OrderDirectionAsc,
+	Field: &ScoresOrderField{
+		field: scores.FieldID,
+		toCursor: func(s *Scores) Cursor {
+			return Cursor{ID: s.ID}
+		},
+	},
+}
+
+// ToEdge converts Scores into ScoresEdge.
+func (s *Scores) ToEdge(order *ScoresOrder) *ScoresEdge {
+	if order == nil {
+		order = DefaultScoresOrder
+	}
+	return &ScoresEdge{
+		Node:   s,
+		Cursor: order.Field.toCursor(s),
+	}
+}
+
+// ScoresV1Edge is the edge representation of ScoresV1.
+type ScoresV1Edge struct {
+	Node   *ScoresV1 `json:"node"`
+	Cursor Cursor    `json:"cursor"`
+}
+
+// ScoresV1Connection is the connection containing edges to ScoresV1.
+type ScoresV1Connection struct {
+	Edges      []*ScoresV1Edge `json:"edges"`
+	PageInfo   PageInfo        `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+func (c *ScoresV1Connection) build(nodes []*ScoresV1, pager *scoresv1Pager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ScoresV1
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ScoresV1 {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ScoresV1 {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ScoresV1Edge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ScoresV1Edge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ScoresV1PaginateOption enables pagination customization.
+type ScoresV1PaginateOption func(*scoresv1Pager) error
+
+// WithScoresV1Order configures pagination ordering.
+func WithScoresV1Order(order *ScoresV1Order) ScoresV1PaginateOption {
+	if order == nil {
+		order = DefaultScoresV1Order
+	}
+	o := *order
+	return func(pager *scoresv1Pager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultScoresV1Order.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithScoresV1Filter configures pagination filter.
+func WithScoresV1Filter(filter func(*ScoresV1Query) (*ScoresV1Query, error)) ScoresV1PaginateOption {
+	return func(pager *scoresv1Pager) error {
+		if filter == nil {
+			return errors.New("ScoresV1Query filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type scoresv1Pager struct {
+	order  *ScoresV1Order
+	filter func(*ScoresV1Query) (*ScoresV1Query, error)
+}
+
+func newScoresV1Pager(opts []ScoresV1PaginateOption) (*scoresv1Pager, error) {
+	pager := &scoresv1Pager{}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultScoresV1Order
+	}
+	return pager, nil
+}
+
+func (p *scoresv1Pager) applyFilter(query *ScoresV1Query) (*ScoresV1Query, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *scoresv1Pager) toCursor(s *ScoresV1) Cursor {
+	return p.order.Field.toCursor(s)
+}
+
+func (p *scoresv1Pager) applyCursors(query *ScoresV1Query, after, before *Cursor) *ScoresV1Query {
+	for _, predicate := range cursorsToPredicates(
+		p.order.Direction, after, before,
+		p.order.Field.field, DefaultScoresV1Order.Field.field,
+	) {
+		query = query.Where(predicate)
+	}
+	return query
+}
+
+func (p *scoresv1Pager) applyOrder(query *ScoresV1Query, reverse bool) *ScoresV1Query {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	query = query.Order(direction.orderFunc(p.order.Field.field))
+	if p.order.Field != DefaultScoresV1Order.Field {
+		query = query.Order(direction.orderFunc(DefaultScoresV1Order.Field.field))
+	}
+	return query
+}
+
+func (p *scoresv1Pager) orderExpr(reverse bool) sql.Querier {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.field).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultScoresV1Order.Field {
+			b.Comma().Ident(DefaultScoresV1Order.Field.field).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ScoresV1.
+func (s *ScoresV1Query) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ScoresV1PaginateOption,
+) (*ScoresV1Connection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newScoresV1Pager(opts)
+	if err != nil {
+		return nil, err
+	}
+	if s, err = pager.applyFilter(s); err != nil {
+		return nil, err
+	}
+	conn := &ScoresV1Connection{Edges: []*ScoresV1Edge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			if conn.TotalCount, err = s.Clone().Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+
+	s = pager.applyCursors(s, after, before)
+	s = pager.applyOrder(s, last != nil)
+	if limit := paginateLimit(first, last); limit != 0 {
+		s.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := s.collectField(ctx, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+
+	nodes, err := s.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// ScoresV1OrderField defines the ordering field of ScoresV1.
+type ScoresV1OrderField struct {
+	field    string
+	toCursor func(*ScoresV1) Cursor
+}
+
+// ScoresV1Order defines the ordering of ScoresV1.
+type ScoresV1Order struct {
+	Direction OrderDirection      `json:"direction"`
+	Field     *ScoresV1OrderField `json:"field"`
+}
+
+// DefaultScoresV1Order is the default ordering of ScoresV1.
+var DefaultScoresV1Order = &ScoresV1Order{
+	Direction: OrderDirectionAsc,
+	Field: &ScoresV1OrderField{
+		field: scoresv1.FieldID,
+		toCursor: func(s *ScoresV1) Cursor {
+			return Cursor{ID: s.ID}
+		},
+	},
+}
+
+// ToEdge converts ScoresV1 into ScoresV1Edge.
+func (s *ScoresV1) ToEdge(order *ScoresV1Order) *ScoresV1Edge {
+	if order == nil {
+		order = DefaultScoresV1Order
+	}
+	return &ScoresV1Edge{
+		Node:   s,
+		Cursor: order.Field.toCursor(s),
+	}
+}
+
+// ScoresV2Edge is the edge representation of ScoresV2.
+type ScoresV2Edge struct {
+	Node   *ScoresV2 `json:"node"`
+	Cursor Cursor    `json:"cursor"`
+}
+
+// ScoresV2Connection is the connection containing edges to ScoresV2.
+type ScoresV2Connection struct {
+	Edges      []*ScoresV2Edge `json:"edges"`
+	PageInfo   PageInfo        `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+func (c *ScoresV2Connection) build(nodes []*ScoresV2, pager *scoresv2Pager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *ScoresV2
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *ScoresV2 {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *ScoresV2 {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*ScoresV2Edge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &ScoresV2Edge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// ScoresV2PaginateOption enables pagination customization.
+type ScoresV2PaginateOption func(*scoresv2Pager) error
+
+// WithScoresV2Order configures pagination ordering.
+func WithScoresV2Order(order *ScoresV2Order) ScoresV2PaginateOption {
+	if order == nil {
+		order = DefaultScoresV2Order
+	}
+	o := *order
+	return func(pager *scoresv2Pager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultScoresV2Order.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithScoresV2Filter configures pagination filter.
+func WithScoresV2Filter(filter func(*ScoresV2Query) (*ScoresV2Query, error)) ScoresV2PaginateOption {
+	return func(pager *scoresv2Pager) error {
+		if filter == nil {
+			return errors.New("ScoresV2Query filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type scoresv2Pager struct {
+	order  *ScoresV2Order
+	filter func(*ScoresV2Query) (*ScoresV2Query, error)
+}
+
+func newScoresV2Pager(opts []ScoresV2PaginateOption) (*scoresv2Pager, error) {
+	pager := &scoresv2Pager{}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultScoresV2Order
+	}
+	return pager, nil
+}
+
+func (p *scoresv2Pager) applyFilter(query *ScoresV2Query) (*ScoresV2Query, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *scoresv2Pager) toCursor(s *ScoresV2) Cursor {
+	return p.order.Field.toCursor(s)
+}
+
+func (p *scoresv2Pager) applyCursors(query *ScoresV2Query, after, before *Cursor) *ScoresV2Query {
+	for _, predicate := range cursorsToPredicates(
+		p.order.Direction, after, before,
+		p.order.Field.field, DefaultScoresV2Order.Field.field,
+	) {
+		query = query.Where(predicate)
+	}
+	return query
+}
+
+func (p *scoresv2Pager) applyOrder(query *ScoresV2Query, reverse bool) *ScoresV2Query {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	query = query.Order(direction.orderFunc(p.order.Field.field))
+	if p.order.Field != DefaultScoresV2Order.Field {
+		query = query.Order(direction.orderFunc(DefaultScoresV2Order.Field.field))
+	}
+	return query
+}
+
+func (p *scoresv2Pager) orderExpr(reverse bool) sql.Querier {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.field).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultScoresV2Order.Field {
+			b.Comma().Ident(DefaultScoresV2Order.Field.field).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to ScoresV2.
+func (s *ScoresV2Query) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...ScoresV2PaginateOption,
+) (*ScoresV2Connection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newScoresV2Pager(opts)
+	if err != nil {
+		return nil, err
+	}
+	if s, err = pager.applyFilter(s); err != nil {
+		return nil, err
+	}
+	conn := &ScoresV2Connection{Edges: []*ScoresV2Edge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			if conn.TotalCount, err = s.Clone().Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+
+	s = pager.applyCursors(s, after, before)
+	s = pager.applyOrder(s, last != nil)
+	if limit := paginateLimit(first, last); limit != 0 {
+		s.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := s.collectField(ctx, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+
+	nodes, err := s.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// ScoresV2OrderField defines the ordering field of ScoresV2.
+type ScoresV2OrderField struct {
+	field    string
+	toCursor func(*ScoresV2) Cursor
+}
+
+// ScoresV2Order defines the ordering of ScoresV2.
+type ScoresV2Order struct {
+	Direction OrderDirection      `json:"direction"`
+	Field     *ScoresV2OrderField `json:"field"`
+}
+
+// DefaultScoresV2Order is the default ordering of ScoresV2.
+var DefaultScoresV2Order = &ScoresV2Order{
+	Direction: OrderDirectionAsc,
+	Field: &ScoresV2OrderField{
+		field: scoresv2.FieldID,
+		toCursor: func(s *ScoresV2) Cursor {
+			return Cursor{ID: s.ID}
+		},
+	},
+}
+
+// ToEdge converts ScoresV2 into ScoresV2Edge.
+func (s *ScoresV2) ToEdge(order *ScoresV2Order) *ScoresV2Edge {
+	if order == nil {
+		order = DefaultScoresV2Order
+	}
+	return &ScoresV2Edge{
+		Node:   s,
+		Cursor: order.Field.toCursor(s),
 	}
 }
 

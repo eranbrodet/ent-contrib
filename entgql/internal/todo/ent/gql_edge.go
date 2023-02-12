@@ -79,6 +79,34 @@ func (gr *Group) Users(
 	return gr.QueryUsers().Paginate(ctx, after, first, before, last, opts...)
 }
 
+func (s *Scores) Todo(ctx context.Context) (result []*Todo, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = s.NamedTodo(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = s.Edges.TodoOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = s.QueryTodo().All(ctx)
+	}
+	return result, err
+}
+
+func (s *Scores) ScoresV1(ctx context.Context) (*ScoresV1, error) {
+	result, err := s.Edges.ScoresV1OrErr()
+	if IsNotLoaded(err) {
+		result, err = s.QueryScoresV1().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (s *Scores) ScoresV2(ctx context.Context) (*ScoresV2, error) {
+	result, err := s.Edges.ScoresV2OrErr()
+	if IsNotLoaded(err) {
+		result, err = s.QueryScoresV2().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
 func (t *Todo) Parent(ctx context.Context) (*Todo, error) {
 	result, err := t.Edges.ParentOrErr()
 	if IsNotLoaded(err) {
@@ -112,6 +140,14 @@ func (t *Todo) Category(ctx context.Context) (*Category, error) {
 	result, err := t.Edges.CategoryOrErr()
 	if IsNotLoaded(err) {
 		result, err = t.QueryCategory().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (t *Todo) Scores(ctx context.Context) (*Scores, error) {
+	result, err := t.Edges.ScoresOrErr()
+	if IsNotLoaded(err) {
+		result, err = t.QueryScores().Only(ctx)
 	}
 	return result, MaskNotFound(err)
 }

@@ -32,6 +32,15 @@ type Friendship func(*sql.Selector)
 // Group is the predicate function for group builders.
 type Group func(*sql.Selector)
 
+// Scores is the predicate function for scores builders.
+type Scores func(*sql.Selector)
+
+// ScoresV1 is the predicate function for scoresv1 builders.
+type ScoresV1 func(*sql.Selector)
+
+// ScoresV2 is the predicate function for scoresv2 builders.
+type ScoresV2 func(*sql.Selector)
+
 // Todo is the predicate function for todo builders.
 type Todo func(*sql.Selector)
 

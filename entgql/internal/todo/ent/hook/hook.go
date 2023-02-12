@@ -71,6 +71,42 @@ func (f GroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GroupMutation", m)
 }
 
+// The ScoresFunc type is an adapter to allow the use of ordinary
+// function as Scores mutator.
+type ScoresFunc func(context.Context, *ent.ScoresMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ScoresFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ScoresMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ScoresMutation", m)
+}
+
+// The ScoresV1Func type is an adapter to allow the use of ordinary
+// function as ScoresV1 mutator.
+type ScoresV1Func func(context.Context, *ent.ScoresV1Mutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ScoresV1Func) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ScoresV1Mutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ScoresV1Mutation", m)
+}
+
+// The ScoresV2Func type is an adapter to allow the use of ordinary
+// function as ScoresV2 mutator.
+type ScoresV2Func func(context.Context, *ent.ScoresV2Mutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ScoresV2Func) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ScoresV2Mutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ScoresV2Mutation", m)
+}
+
 // The TodoFunc type is an adapter to allow the use of ordinary
 // function as Todo mutator.
 type TodoFunc func(context.Context, *ent.TodoMutation) (ent.Value, error)

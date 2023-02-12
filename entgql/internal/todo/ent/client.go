@@ -28,6 +28,9 @@ import (
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/friendship"
 	"entgo.io/contrib/entgql/internal/todo/ent/group"
+	"entgo.io/contrib/entgql/internal/todo/ent/scores"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv1"
+	"entgo.io/contrib/entgql/internal/todo/ent/scoresv2"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/user"
 	"entgo.io/contrib/entgql/internal/todo/ent/verysecret"
@@ -50,6 +53,12 @@ type Client struct {
 	Friendship *FriendshipClient
 	// Group is the client for interacting with the Group builders.
 	Group *GroupClient
+	// Scores is the client for interacting with the Scores builders.
+	Scores *ScoresClient
+	// ScoresV1 is the client for interacting with the ScoresV1 builders.
+	ScoresV1 *ScoresV1Client
+	// ScoresV2 is the client for interacting with the ScoresV2 builders.
+	ScoresV2 *ScoresV2Client
 	// Todo is the client for interacting with the Todo builders.
 	Todo *TodoClient
 	// User is the client for interacting with the User builders.
@@ -75,6 +84,9 @@ func (c *Client) init() {
 	c.Category = NewCategoryClient(c.config)
 	c.Friendship = NewFriendshipClient(c.config)
 	c.Group = NewGroupClient(c.config)
+	c.Scores = NewScoresClient(c.config)
+	c.ScoresV1 = NewScoresV1Client(c.config)
+	c.ScoresV2 = NewScoresV2Client(c.config)
 	c.Todo = NewTodoClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.VerySecret = NewVerySecretClient(c.config)
@@ -115,6 +127,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Category:    NewCategoryClient(cfg),
 		Friendship:  NewFriendshipClient(cfg),
 		Group:       NewGroupClient(cfg),
+		Scores:      NewScoresClient(cfg),
+		ScoresV1:    NewScoresV1Client(cfg),
+		ScoresV2:    NewScoresV2Client(cfg),
 		Todo:        NewTodoClient(cfg),
 		User:        NewUserClient(cfg),
 		VerySecret:  NewVerySecretClient(cfg),
@@ -141,6 +156,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Category:    NewCategoryClient(cfg),
 		Friendship:  NewFriendshipClient(cfg),
 		Group:       NewGroupClient(cfg),
+		Scores:      NewScoresClient(cfg),
+		ScoresV1:    NewScoresV1Client(cfg),
+		ScoresV2:    NewScoresV2Client(cfg),
 		Todo:        NewTodoClient(cfg),
 		User:        NewUserClient(cfg),
 		VerySecret:  NewVerySecretClient(cfg),
@@ -176,6 +194,9 @@ func (c *Client) Use(hooks ...Hook) {
 	c.Category.Use(hooks...)
 	c.Friendship.Use(hooks...)
 	c.Group.Use(hooks...)
+	c.Scores.Use(hooks...)
+	c.ScoresV1.Use(hooks...)
+	c.ScoresV2.Use(hooks...)
 	c.Todo.Use(hooks...)
 	c.User.Use(hooks...)
 	c.VerySecret.Use(hooks...)
@@ -188,6 +209,9 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Category.Intercept(interceptors...)
 	c.Friendship.Intercept(interceptors...)
 	c.Group.Intercept(interceptors...)
+	c.Scores.Intercept(interceptors...)
+	c.ScoresV1.Intercept(interceptors...)
+	c.ScoresV2.Intercept(interceptors...)
 	c.Todo.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 	c.VerySecret.Intercept(interceptors...)
@@ -204,6 +228,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Friendship.mutate(ctx, m)
 	case *GroupMutation:
 		return c.Group.mutate(ctx, m)
+	case *ScoresMutation:
+		return c.Scores.mutate(ctx, m)
+	case *ScoresV1Mutation:
+		return c.ScoresV1.mutate(ctx, m)
+	case *ScoresV2Mutation:
+		return c.ScoresV2.mutate(ctx, m)
 	case *TodoMutation:
 		return c.Todo.mutate(ctx, m)
 	case *UserMutation:
@@ -751,6 +781,440 @@ func (c *GroupClient) mutate(ctx context.Context, m *GroupMutation) (Value, erro
 	}
 }
 
+// ScoresClient is a client for the Scores schema.
+type ScoresClient struct {
+	config
+}
+
+// NewScoresClient returns a client for the Scores from the given config.
+func NewScoresClient(c config) *ScoresClient {
+	return &ScoresClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `scores.Hooks(f(g(h())))`.
+func (c *ScoresClient) Use(hooks ...Hook) {
+	c.hooks.Scores = append(c.hooks.Scores, hooks...)
+}
+
+// Use adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `scores.Intercept(f(g(h())))`.
+func (c *ScoresClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Scores = append(c.inters.Scores, interceptors...)
+}
+
+// Create returns a builder for creating a Scores entity.
+func (c *ScoresClient) Create() *ScoresCreate {
+	mutation := newScoresMutation(c.config, OpCreate)
+	return &ScoresCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Scores entities.
+func (c *ScoresClient) CreateBulk(builders ...*ScoresCreate) *ScoresCreateBulk {
+	return &ScoresCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Scores.
+func (c *ScoresClient) Update() *ScoresUpdate {
+	mutation := newScoresMutation(c.config, OpUpdate)
+	return &ScoresUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ScoresClient) UpdateOne(s *Scores) *ScoresUpdateOne {
+	mutation := newScoresMutation(c.config, OpUpdateOne, withScores(s))
+	return &ScoresUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ScoresClient) UpdateOneID(id int) *ScoresUpdateOne {
+	mutation := newScoresMutation(c.config, OpUpdateOne, withScoresID(id))
+	return &ScoresUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Scores.
+func (c *ScoresClient) Delete() *ScoresDelete {
+	mutation := newScoresMutation(c.config, OpDelete)
+	return &ScoresDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ScoresClient) DeleteOne(s *Scores) *ScoresDeleteOne {
+	return c.DeleteOneID(s.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ScoresClient) DeleteOneID(id int) *ScoresDeleteOne {
+	builder := c.Delete().Where(scores.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ScoresDeleteOne{builder}
+}
+
+// Query returns a query builder for Scores.
+func (c *ScoresClient) Query() *ScoresQuery {
+	return &ScoresQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeScores},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Scores entity by its id.
+func (c *ScoresClient) Get(ctx context.Context, id int) (*Scores, error) {
+	return c.Query().Where(scores.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ScoresClient) GetX(ctx context.Context, id int) *Scores {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryTodo queries the todo edge of a Scores.
+func (c *ScoresClient) QueryTodo(s *Scores) *TodoQuery {
+	query := (&TodoClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(scores.Table, scores.FieldID, id),
+			sqlgraph.To(todo.Table, todo.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, scores.TodoTable, scores.TodoColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryScoresV1 queries the ScoresV1 edge of a Scores.
+func (c *ScoresClient) QueryScoresV1(s *Scores) *ScoresV1Query {
+	query := (&ScoresV1Client{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(scores.Table, scores.FieldID, id),
+			sqlgraph.To(scoresv1.Table, scoresv1.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, scores.ScoresV1Table, scores.ScoresV1Column),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryScoresV2 queries the ScoresV2 edge of a Scores.
+func (c *ScoresClient) QueryScoresV2(s *Scores) *ScoresV2Query {
+	query := (&ScoresV2Client{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(scores.Table, scores.FieldID, id),
+			sqlgraph.To(scoresv2.Table, scoresv2.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, scores.ScoresV2Table, scores.ScoresV2Column),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ScoresClient) Hooks() []Hook {
+	return c.hooks.Scores
+}
+
+// Interceptors returns the client interceptors.
+func (c *ScoresClient) Interceptors() []Interceptor {
+	return c.inters.Scores
+}
+
+func (c *ScoresClient) mutate(ctx context.Context, m *ScoresMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ScoresCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ScoresUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ScoresUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ScoresDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Scores mutation op: %q", m.Op())
+	}
+}
+
+// ScoresV1Client is a client for the ScoresV1 schema.
+type ScoresV1Client struct {
+	config
+}
+
+// NewScoresV1Client returns a client for the ScoresV1 from the given config.
+func NewScoresV1Client(c config) *ScoresV1Client {
+	return &ScoresV1Client{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `scoresv1.Hooks(f(g(h())))`.
+func (c *ScoresV1Client) Use(hooks ...Hook) {
+	c.hooks.ScoresV1 = append(c.hooks.ScoresV1, hooks...)
+}
+
+// Use adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `scoresv1.Intercept(f(g(h())))`.
+func (c *ScoresV1Client) Intercept(interceptors ...Interceptor) {
+	c.inters.ScoresV1 = append(c.inters.ScoresV1, interceptors...)
+}
+
+// Create returns a builder for creating a ScoresV1 entity.
+func (c *ScoresV1Client) Create() *ScoresV1Create {
+	mutation := newScoresV1Mutation(c.config, OpCreate)
+	return &ScoresV1Create{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ScoresV1 entities.
+func (c *ScoresV1Client) CreateBulk(builders ...*ScoresV1Create) *ScoresV1CreateBulk {
+	return &ScoresV1CreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ScoresV1.
+func (c *ScoresV1Client) Update() *ScoresV1Update {
+	mutation := newScoresV1Mutation(c.config, OpUpdate)
+	return &ScoresV1Update{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ScoresV1Client) UpdateOne(s *ScoresV1) *ScoresV1UpdateOne {
+	mutation := newScoresV1Mutation(c.config, OpUpdateOne, withScoresV1(s))
+	return &ScoresV1UpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ScoresV1Client) UpdateOneID(id int) *ScoresV1UpdateOne {
+	mutation := newScoresV1Mutation(c.config, OpUpdateOne, withScoresV1ID(id))
+	return &ScoresV1UpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ScoresV1.
+func (c *ScoresV1Client) Delete() *ScoresV1Delete {
+	mutation := newScoresV1Mutation(c.config, OpDelete)
+	return &ScoresV1Delete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ScoresV1Client) DeleteOne(s *ScoresV1) *ScoresV1DeleteOne {
+	return c.DeleteOneID(s.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ScoresV1Client) DeleteOneID(id int) *ScoresV1DeleteOne {
+	builder := c.Delete().Where(scoresv1.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ScoresV1DeleteOne{builder}
+}
+
+// Query returns a query builder for ScoresV1.
+func (c *ScoresV1Client) Query() *ScoresV1Query {
+	return &ScoresV1Query{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeScoresV1},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ScoresV1 entity by its id.
+func (c *ScoresV1Client) Get(ctx context.Context, id int) (*ScoresV1, error) {
+	return c.Query().Where(scoresv1.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ScoresV1Client) GetX(ctx context.Context, id int) *ScoresV1 {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryScores queries the Scores edge of a ScoresV1.
+func (c *ScoresV1Client) QueryScores(s *ScoresV1) *ScoresQuery {
+	query := (&ScoresClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(scoresv1.Table, scoresv1.FieldID, id),
+			sqlgraph.To(scores.Table, scores.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, scoresv1.ScoresTable, scoresv1.ScoresColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ScoresV1Client) Hooks() []Hook {
+	return c.hooks.ScoresV1
+}
+
+// Interceptors returns the client interceptors.
+func (c *ScoresV1Client) Interceptors() []Interceptor {
+	return c.inters.ScoresV1
+}
+
+func (c *ScoresV1Client) mutate(ctx context.Context, m *ScoresV1Mutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ScoresV1Create{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ScoresV1Update{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ScoresV1UpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ScoresV1Delete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ScoresV1 mutation op: %q", m.Op())
+	}
+}
+
+// ScoresV2Client is a client for the ScoresV2 schema.
+type ScoresV2Client struct {
+	config
+}
+
+// NewScoresV2Client returns a client for the ScoresV2 from the given config.
+func NewScoresV2Client(c config) *ScoresV2Client {
+	return &ScoresV2Client{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `scoresv2.Hooks(f(g(h())))`.
+func (c *ScoresV2Client) Use(hooks ...Hook) {
+	c.hooks.ScoresV2 = append(c.hooks.ScoresV2, hooks...)
+}
+
+// Use adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `scoresv2.Intercept(f(g(h())))`.
+func (c *ScoresV2Client) Intercept(interceptors ...Interceptor) {
+	c.inters.ScoresV2 = append(c.inters.ScoresV2, interceptors...)
+}
+
+// Create returns a builder for creating a ScoresV2 entity.
+func (c *ScoresV2Client) Create() *ScoresV2Create {
+	mutation := newScoresV2Mutation(c.config, OpCreate)
+	return &ScoresV2Create{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ScoresV2 entities.
+func (c *ScoresV2Client) CreateBulk(builders ...*ScoresV2Create) *ScoresV2CreateBulk {
+	return &ScoresV2CreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ScoresV2.
+func (c *ScoresV2Client) Update() *ScoresV2Update {
+	mutation := newScoresV2Mutation(c.config, OpUpdate)
+	return &ScoresV2Update{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ScoresV2Client) UpdateOne(s *ScoresV2) *ScoresV2UpdateOne {
+	mutation := newScoresV2Mutation(c.config, OpUpdateOne, withScoresV2(s))
+	return &ScoresV2UpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ScoresV2Client) UpdateOneID(id int) *ScoresV2UpdateOne {
+	mutation := newScoresV2Mutation(c.config, OpUpdateOne, withScoresV2ID(id))
+	return &ScoresV2UpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ScoresV2.
+func (c *ScoresV2Client) Delete() *ScoresV2Delete {
+	mutation := newScoresV2Mutation(c.config, OpDelete)
+	return &ScoresV2Delete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ScoresV2Client) DeleteOne(s *ScoresV2) *ScoresV2DeleteOne {
+	return c.DeleteOneID(s.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ScoresV2Client) DeleteOneID(id int) *ScoresV2DeleteOne {
+	builder := c.Delete().Where(scoresv2.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ScoresV2DeleteOne{builder}
+}
+
+// Query returns a query builder for ScoresV2.
+func (c *ScoresV2Client) Query() *ScoresV2Query {
+	return &ScoresV2Query{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeScoresV2},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ScoresV2 entity by its id.
+func (c *ScoresV2Client) Get(ctx context.Context, id int) (*ScoresV2, error) {
+	return c.Query().Where(scoresv2.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ScoresV2Client) GetX(ctx context.Context, id int) *ScoresV2 {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryScores queries the Scores edge of a ScoresV2.
+func (c *ScoresV2Client) QueryScores(s *ScoresV2) *ScoresQuery {
+	query := (&ScoresClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := s.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(scoresv2.Table, scoresv2.FieldID, id),
+			sqlgraph.To(scores.Table, scores.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, scoresv2.ScoresTable, scoresv2.ScoresColumn),
+		)
+		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ScoresV2Client) Hooks() []Hook {
+	return c.hooks.ScoresV2
+}
+
+// Interceptors returns the client interceptors.
+func (c *ScoresV2Client) Interceptors() []Interceptor {
+	return c.inters.ScoresV2
+}
+
+func (c *ScoresV2Client) mutate(ctx context.Context, m *ScoresV2Mutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ScoresV2Create{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ScoresV2Update{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ScoresV2UpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ScoresV2Delete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ScoresV2 mutation op: %q", m.Op())
+	}
+}
+
 // TodoClient is a client for the Todo schema.
 type TodoClient struct {
 	config
@@ -901,6 +1365,22 @@ func (c *TodoClient) QuerySecret(t *Todo) *VerySecretQuery {
 			sqlgraph.From(todo.Table, todo.FieldID, id),
 			sqlgraph.To(verysecret.Table, verysecret.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, false, todo.SecretTable, todo.SecretColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryScores queries the scores edge of a Todo.
+func (c *TodoClient) QueryScores(t *Todo) *ScoresQuery {
+	query := (&ScoresClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(todo.Table, todo.FieldID, id),
+			sqlgraph.To(scores.Table, scores.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, todo.ScoresTable, todo.ScoresColumn),
 		)
 		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
 		return fromV, nil
